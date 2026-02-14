@@ -272,8 +272,25 @@ export function useRegenmon() {
     saveState(newState)
   }, [])
 
+  const chatMessage = useCallback(
+    (consecutiveCount: number) => {
+      setState((prev) => {
+        if (!prev) return prev
+        const energyCost = consecutiveCount > 5 ? 8 : 3
+        const happinessGain = 5
+        return {
+          ...prev,
+          happiness: Math.min(100, Math.max(0, prev.happiness + happinessGain - energyCost)),
+        }
+      })
+    },
+    []
+  )
+
   const resetGame = useCallback(() => {
     clearSave()
+    localStorage.removeItem("regenmon-chat")
+    localStorage.removeItem("regenmon-memories")
     setState(null)
   }, [])
 
@@ -288,6 +305,7 @@ export function useRegenmon() {
     setName,
     resetGame,
     createRegenmon,
+    chatMessage,
     xpPerLevel: XP_PER_LEVEL,
     hasRegenmon: state !== null,
   }
