@@ -1,27 +1,21 @@
 "use client"
 
 import { cn } from "@/lib/utils"
+import { REGENMON_TYPES, type RegenmonType } from "@/hooks/use-regenmon"
 
 interface RegenmonAvatarProps {
   level: number
   happiness: number
   celebrating: boolean
+  type: RegenmonType
 }
 
-function getEvolutionEmoji(level: number) {
-  if (level >= 20) return "🐉"
-  if (level >= 15) return "🦊"
-  if (level >= 10) return "🐺"
-  if (level >= 5) return "🐣"
-  return "🥚"
-}
-
-function getEvolutionName(level: number) {
-  if (level >= 20) return "Dragenmon"
-  if (level >= 15) return "Foxenmon"
-  if (level >= 10) return "Wolfenmon"
-  if (level >= 5) return "Chickenmon"
-  return "Eggmon"
+function getEvolutionIndex(level: number) {
+  if (level >= 20) return 4
+  if (level >= 15) return 3
+  if (level >= 10) return 2
+  if (level >= 5) return 1
+  return 0
 }
 
 function getMoodEmoji(happiness: number) {
@@ -31,10 +25,46 @@ function getMoodEmoji(happiness: number) {
   return "💔"
 }
 
-export function RegenmonAvatar({ level, happiness, celebrating }: RegenmonAvatarProps) {
-  const evolutionEmoji = getEvolutionEmoji(level)
-  const evolutionName = getEvolutionName(level)
+const typeGlowMap: Record<RegenmonType, { high: string; low: string; border: string }> = {
+  fuego: {
+    high: "bg-[hsl(330_100%_60%)]",
+    low: "bg-[hsl(330_100%_60%)]",
+    border: "border-[hsl(var(--neon-pink))] shadow-[0_0_30px_hsl(330_100%_60%/0.3)]",
+  },
+  agua: {
+    high: "bg-[hsl(170_100%_50%)]",
+    low: "bg-[hsl(170_100%_50%)]",
+    border: "border-[hsl(var(--neon-cyan))] shadow-[0_0_30px_hsl(170_100%_50%/0.3)]",
+  },
+  planta: {
+    high: "bg-[hsl(120_70%_50%)]",
+    low: "bg-[hsl(120_70%_50%)]",
+    border: "border-[hsl(var(--neon-green))] shadow-[0_0_30px_hsl(120_70%_50%/0.3)]",
+  },
+  electrico: {
+    high: "bg-[hsl(50_100%_55%)]",
+    low: "bg-[hsl(50_100%_55%)]",
+    border: "border-[hsl(var(--neon-yellow))] shadow-[0_0_30px_hsl(50_100%_55%/0.3)]",
+  },
+  sombra: {
+    high: "bg-[hsl(280_80%_60%)]",
+    low: "bg-[hsl(280_80%_60%)]",
+    border: "border-[hsl(280_80%_60%)] shadow-[0_0_30px_hsl(280_80%_60%/0.3)]",
+  },
+  cosmico: {
+    high: "bg-[hsl(200_100%_60%)]",
+    low: "bg-[hsl(200_100%_60%)]",
+    border: "border-[hsl(200_100%_60%)] shadow-[0_0_30px_hsl(200_100%_60%/0.3)]",
+  },
+}
+
+export function RegenmonAvatar({ level, happiness, celebrating, type }: RegenmonAvatarProps) {
+  const evoIndex = getEvolutionIndex(level)
+  const typeData = REGENMON_TYPES[type]
+  const evolutionEmoji = typeData.evolutions[evoIndex]
+  const evolutionName = typeData.evolutionNames[evoIndex]
   const moodEmoji = getMoodEmoji(happiness)
+  const glowColors = typeGlowMap[type]
 
   return (
     <div className="flex flex-col items-center gap-3">
@@ -43,9 +73,7 @@ export function RegenmonAvatar({ level, happiness, celebrating }: RegenmonAvatar
         <div
           className={cn(
             "absolute inset-0 rounded-full blur-xl opacity-40 transition-all duration-500",
-            happiness >= 50
-              ? "bg-[hsl(var(--neon-cyan))]"
-              : "bg-[hsl(var(--neon-pink))]"
+            happiness >= 50 ? glowColors.high : "bg-[hsl(var(--neon-pink))]"
           )}
         />
 
@@ -54,9 +82,7 @@ export function RegenmonAvatar({ level, happiness, celebrating }: RegenmonAvatar
           className={cn(
             "relative flex items-center justify-center w-32 h-32 md:w-40 md:h-40 rounded-full",
             "border-2 transition-all duration-500",
-            happiness >= 50
-              ? "border-[hsl(var(--neon-cyan))] shadow-[0_0_30px_hsl(170_100%_50%/0.3)]"
-              : "border-[hsl(var(--neon-pink))] shadow-[0_0_30px_hsl(330_100%_60%/0.3)]",
+            glowColors.border,
             celebrating ? "animate-celebrate" : "animate-float"
           )}
           style={{
@@ -97,10 +123,15 @@ export function RegenmonAvatar({ level, happiness, celebrating }: RegenmonAvatar
         )}
       </div>
 
-      {/* Evolution label */}
-      <span className="text-xs font-mono tracking-widest uppercase text-muted-foreground">
-        {evolutionName}
-      </span>
+      {/* Evolution label + type badge */}
+      <div className="flex flex-col items-center gap-1">
+        <span className="text-xs font-mono tracking-widest uppercase text-muted-foreground">
+          {evolutionName}
+        </span>
+        <span className="text-[10px] font-mono tracking-wider uppercase text-muted-foreground/60">
+          {typeData.emoji} {typeData.label}
+        </span>
+      </div>
     </div>
   )
 }
