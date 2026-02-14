@@ -2,37 +2,40 @@
 
 import { useState } from "react"
 import { cn } from "@/lib/utils"
-import { useRegenmon } from "@/hooks/use-regenmon"
+import { type RegenmonState, REGENMON_TYPES } from "@/hooks/use-regenmon"
 import { RegenmonAvatar } from "@/components/regenmon-avatar"
 import { StatBar } from "@/components/stat-bar"
 import { ActionButtons } from "@/components/action-buttons"
 import { Pencil, Check, RotateCcw } from "lucide-react"
 
-export function RegenmonCard() {
-  const {
-    state,
-    cooldown,
-    celebrating,
-    mounted,
-    feed,
-    play,
-    train,
-    setName,
-    resetGame,
-    xpPerLevel,
-  } = useRegenmon()
+interface RegenmonCardProps {
+  state: RegenmonState
+  cooldown: boolean
+  celebrating: boolean
+  xpPerLevel: number
+  onFeed: () => void
+  onPlay: () => void
+  onTrain: () => void
+  onSetName: (name: string) => void
+  onReset: () => void
+}
 
+export function RegenmonCard({
+  state,
+  cooldown,
+  celebrating,
+  xpPerLevel,
+  onFeed,
+  onPlay,
+  onTrain,
+  onSetName,
+  onReset,
+}: RegenmonCardProps) {
   const [editing, setEditing] = useState(false)
   const [nameInput, setNameInput] = useState("")
   const [showReset, setShowReset] = useState(false)
 
-  if (!mounted) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-8 h-8 border-2 border-[hsl(var(--neon-cyan))] border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
-  }
+  const typeData = REGENMON_TYPES[state.type]
 
   const startEditing = () => {
     setNameInput(state.name)
@@ -42,14 +45,14 @@ export function RegenmonCard() {
   const saveName = () => {
     const trimmed = nameInput.trim()
     if (trimmed.length > 0) {
-      setName(trimmed)
+      onSetName(trimmed)
     }
     setEditing(false)
   }
 
   const handleReset = () => {
     if (showReset) {
-      resetGame()
+      onReset()
       setShowReset(false)
     } else {
       setShowReset(true)
@@ -106,6 +109,7 @@ export function RegenmonCard() {
             level={state.level}
             happiness={state.happiness}
             celebrating={celebrating}
+            type={state.type}
           />
         </div>
 
@@ -169,8 +173,8 @@ export function RegenmonCard() {
             label="Felicidad"
             value={state.happiness}
             max={100}
-            color={state.happiness >= 50 ? "pink" : "cyan"}
-            icon={state.happiness >= 50 ? "❤️" : "💔"}
+            color={state.happiness >= 50 ? typeData.color : "pink"}
+            icon={state.happiness >= 50 ? typeData.emoji : "💔"}
           />
           <StatBar
             label="Experiencia"
@@ -183,9 +187,9 @@ export function RegenmonCard() {
 
         {/* Action Buttons */}
         <ActionButtons
-          onFeed={feed}
-          onPlay={play}
-          onTrain={train}
+          onFeed={onFeed}
+          onPlay={onPlay}
+          onTrain={onTrain}
           cooldown={cooldown}
         />
 
