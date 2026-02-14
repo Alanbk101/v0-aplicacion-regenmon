@@ -1,10 +1,8 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
-import { useChat } from "@ai-sdk/react"
-import { DefaultChatTransport } from "ai"
 import { cn } from "@/lib/utils"
-import { type RegenmonState, REGENMON_TYPES } from "@/hooks/use-regenmon"
+import { type RegenmonState, REGENMON_TYPES, PERSONALITIES } from "@/hooks/use-regenmon"
 import { Send, MessageCircle, Brain, ChevronDown, ChevronUp } from "lucide-react"
 
 interface ChatMessage {
@@ -22,7 +20,7 @@ interface Memory {
 
 const CHAT_STORAGE_KEY = "regenmon-chat"
 const MEMORY_STORAGE_KEY = "regenmon-memories"
-const MAX_MESSAGES = 20
+const MAX_MESSAGES = 30
 
 function loadChatHistory(): ChatMessage[] {
   if (typeof window === "undefined") return []
@@ -60,7 +58,6 @@ function saveMemories(memories: Memory[]) {
 function detectMemories(text: string, existing: Memory[]): Memory[] {
   const newMemories: Memory[] = []
   const lower = text.toLowerCase()
-
   const patterns = [
     { regex: /me llamo (\w+)/i, key: "nombre_usuario" },
     { regex: /mi nombre es (\w+)/i, key: "nombre_usuario" },
@@ -69,7 +66,6 @@ function detectMemories(text: string, existing: Memory[]): Memory[] {
     { regex: /soy de (.+)/i, key: "origen" },
     { regex: /tengo (\d+) a[nñ]os/i, key: "edad" },
   ]
-
   for (const { regex, key } of patterns) {
     const match = lower.match(regex)
     if (match && match[1]) {
@@ -84,9 +80,190 @@ function detectMemories(text: string, existing: Memory[]): Memory[] {
       }
     }
   }
-
   return newMemories
 }
+
+// --- Response Generation System ---
+
+interface ResponseContext {
+  state: RegenmonState
+  userInput: string
+  memories: Memory[]
+  messageCount: number
+}
+
+function pickRandom<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)]
+}
+
+function generateResponse(ctx: ResponseContext): string {
+  const { state, userInput, memories, messageCount } = ctx
+  const lower = userInput.toLowerCase().trim()
+  const typeData = REGENMON_TYPES[state.type]
+  const personalityData = PERSONALITIES[state.personality]
+
+  // Personality prefixes
+  const prefixes: Record<RegenmonState["personality"], string[]> = {
+    valiente: ["Grr!", "Yosh!", "Adelante!", "Sin miedo!"],
+    tranquilo: ["Hmm...", "Ahhh~", "Mmm...", "Ohhh..."],
+    travieso: ["Jeje~", "Muahaha!", "Ups!", "Hihi~"],
+    misterioso: ["...", "Hmm...", "Interesante...", "Veo..."],
+  }
+
+  const emojis: Record<RegenmonState["personality"], string[]> = {
+    valiente: ["💪", "🔥", "⚔️", "🛡️"],
+    tranquilo: ["😊", "🌸", "✨", "🍃"],
+    travieso: ["😜", "🎉", "🤪", "👻"],
+    misterioso: ["🔮", "🌙", "👁️", "💫"],
+  }
+
+  const prefix = pickRandom(prefixes[state.personality])
+  const emoji = pickRandom(emojis[state.personality])
+
+  // User's name from memory
+  const userName = memories.find((m) => m.key === "nombre_usuario")?.value
+
+  // --- Check for low happiness / tired ---
+  if (state.happiness < 20) {
+    const sadResponses = [
+      `${prefix} Estoy un poco triste... ${emoji} Necesito que me alimentes o juegues conmigo!`,
+      `Me siento solito... ${emoji} Podrias cuidarme un poco mas?`,
+      `${prefix} Tengo hambre y estoy cansado... Dale al boton de Alimentar! ${emoji}`,
+    ]
+    return pickRandom(sadResponses)
+  }
+
+  // --- Greeting patterns ---
+  if (/^(hola|hey|hi|buenas|que tal|saludos|ey|hello)/i.test(lower)) {
+    const greetings = [
+      `${prefix} Hola${userName ? `, ${userName}` : ""}! ${emoji} Me alegra verte!`,
+      `Hey${userName ? ` ${userName}` : ""}! ${prefix} ${emoji} Que quieres hacer hoy?`,
+      `${prefix} Bienvenido de vuelta! ${emoji} Estaba esperandote!`,
+      `Holaaa! ${emoji} Tu ${typeData.label} favorito esta aqui! ${prefix}`,
+    ]
+    return pickRandom(greetings)
+  }
+
+  // --- Name introduction ---
+  if (/me llamo|mi nombre es/i.test(lower)) {
+    const nameMatch = lower.match(/(?:me llamo|mi nombre es) (\w+)/i)
+    if (nameMatch) {
+      return `${prefix} Mucho gusto, ${nameMatch[1]}! ${emoji} Yo soy ${state.name}, tu ${typeData.label} de nivel ${state.level}!`
+    }
+  }
+
+  // --- Questions about the Regenmon ---
+  if (/como te llamas|tu nombre|quien eres/i.test(lower)) {
+    return `${prefix} Soy ${state.name}, un Regenmon de tipo ${typeData.label}! ${typeData.emoji} Soy ${personalityData.label.toLowerCase()} y estoy en nivel ${state.level}! ${emoji}`
+  }
+
+  if (/como estas|que tal estas|te sientes/i.test(lower)) {
+    if (state.happiness > 70) {
+      return `${prefix} Estoy super bien! ${emoji} Mi felicidad esta en ${state.happiness}/100! Me siento genial!`
+    } else if (state.happiness > 40) {
+      return `${prefix} Estoy bien, pero podria estar mejor... ${emoji} Mi felicidad esta en ${state.happiness}/100.`
+    } else {
+      return `${prefix} No me siento muy bien... ${emoji} Mi felicidad esta en ${state.happiness}/100. Necesito atencion!`
+    }
+  }
+
+  if (/nivel|level|que nivel/i.test(lower)) {
+    const nextLevelXp = 100 - state.xp
+    return `${prefix} Soy nivel ${state.level}! ${emoji} Me faltan ${nextLevelXp} XP para subir al siguiente nivel. Entrename para ganar mas XP!`
+  }
+
+  if (/tipo|elemento|de que tipo/i.test(lower)) {
+    return `${prefix} Soy de tipo ${typeData.label}! ${typeData.emoji} ${typeData.description} ${emoji}`
+  }
+
+  if (/evolucion|evolucionar|siguiente forma/i.test(lower)) {
+    const evoIdx = Math.min(state.level - 1, typeData.evolutions.length - 1)
+    const currentEvo = typeData.evolutionNames[evoIdx]
+    if (evoIdx < typeData.evolutions.length - 1) {
+      const nextEvo = typeData.evolutionNames[evoIdx + 1]
+      return `${prefix} Ahora soy ${currentEvo} ${typeData.evolutions[evoIdx]}! Mi siguiente forma es ${nextEvo} ${typeData.evolutions[evoIdx + 1]}! ${emoji} Sigue entrenandome!`
+    } else {
+      return `${prefix} Ya llegue a mi forma final: ${currentEvo} ${typeData.evolutions[evoIdx]}! ${emoji} Soy el mas fuerte!`
+    }
+  }
+
+  // --- Action suggestions ---
+  if (/alimentar|comida|comer|hambre|alimentame/i.test(lower)) {
+    return `${prefix} Si! Dame de comer! ${emoji} Presiona el boton de Alimentar para darme felicidad! ${typeData.emoji}`
+  }
+
+  if (/jugar|juguemos|aburrido|divertir/i.test(lower)) {
+    return `${prefix} Vamos a jugar! ${emoji} Pulsa el boton de Jugar para que nos divirtamos juntos! ${typeData.emoji}`
+  }
+
+  if (/entrenar|entrena|fuerte|pelear|luchar/i.test(lower)) {
+    return `${prefix} A entrenar se ha dicho! ${emoji} Presiona Entrenar para ganar XP y hacerme mas fuerte! ${typeData.emoji}`
+  }
+
+  // --- Likes/favorites ---
+  if (/me gusta|favorit/i.test(lower)) {
+    const responses = [
+      `${prefix} Que interesante! ${emoji} Voy a recordar eso!`,
+      `${prefix} Ohhh genial! ${emoji} A mi tambien me gusta pasar tiempo contigo!`,
+      `${prefix} Que cool! ${emoji} Cuentame mas cosas sobre ti!`,
+    ]
+    return pickRandom(responses)
+  }
+
+  // --- Fun/emotional ---
+  if (/te quiero|te amo|eres genial|eres el mejor/i.test(lower)) {
+    return `${prefix} Awww! ${emoji} Yo tambien te quiero mucho${userName ? `, ${userName}` : ""}! Eres el mejor entrenador del mundo! ${typeData.emoji}`
+  }
+
+  if (/gracias|thanks/i.test(lower)) {
+    return `${prefix} De nada! ${emoji} Para eso estoy! Tu ${typeData.label} siempre esta contigo! ${typeData.emoji}`
+  }
+
+  if (/chiste|broma|algo gracioso|hazme reir/i.test(lower)) {
+    const jokes = [
+      `${prefix} Por que los Regenmon no usan paraguas? Porque prefieren evolucionar bajo la lluvia! ${emoji}`,
+      `${prefix} Que le dijo un Regenmon a otro? Si no entrenas, nunca evolucionaras! ${emoji}`,
+      `${prefix} Sabes cual es el Regenmon mas frio? El que esta en el nivel... CERO! ${emoji}`,
+      `${prefix} Toc toc! Quien es? Un Regenmon nivel 1... esperando que lo entrenes! ${emoji}`,
+    ]
+    return pickRandom(jokes)
+  }
+
+  if (/adios|bye|chao|nos vemos|me voy/i.test(lower)) {
+    return `${prefix} Nos vemos${userName ? `, ${userName}` : ""}! ${emoji} No te olvides de volver a verme pronto! ${typeData.emoji}`
+  }
+
+  if (/ayuda|help|que puedo hacer|comandos/i.test(lower)) {
+    return `${prefix} Puedes preguntarme como estoy, mi nivel, mi tipo, mi evolucion... O simplemente hablar conmigo! ${emoji} Tambien puedes pedirme un chiste!`
+  }
+
+  // --- Memory-aware responses ---
+  if (memories.length > 0 && Math.random() > 0.6) {
+    const randomMemory = pickRandom(memories)
+    if (randomMemory.key === "nombre_usuario") {
+      return `${prefix} ${randomMemory.value}, me encanta hablar contigo! ${emoji} Que quieres hacer ahora?`
+    }
+    if (randomMemory.key === "gusto") {
+      return `${prefix} Recuerdo que te gusta ${randomMemory.value}! ${emoji} A mi me gusta cuando me cuidas!`
+    }
+  }
+
+  // --- Default / fallback responses ---
+  const defaultResponses = [
+    `${prefix} ${emoji} Soy un ${typeData.label} de nivel ${state.level}! Preguntame lo que quieras!`,
+    `${prefix} Jeje! ${emoji} No entendi muy bien, pero me alegra que hables conmigo! ${typeData.emoji}`,
+    `${prefix} ${emoji} Hmm... Prueba a preguntarme como estoy, o pideme un chiste!`,
+    `${prefix} ${emoji}${userName ? ` ${userName},` : ""} Estoy aqui para ti! Alimentame, juega conmigo o entrename!`,
+    `${prefix} Mi felicidad esta en ${state.happiness}/100 ${emoji}. ${state.happiness < 50 ? "Necesito atencion!" : "Me siento bien!"}`,
+    `${prefix} Soy ${state.name} el ${personalityData.label.toLowerCase()}! ${emoji} Cuentame algo!`,
+    `${prefix} ${typeData.emoji} Como ${typeData.label}, ${typeData.description.toLowerCase()} ${emoji}`,
+  ]
+
+  // Vary based on message count to not repeat too much
+  return defaultResponses[messageCount % defaultResponses.length] || pickRandom(defaultResponses)
+}
+
+// --- Component ---
 
 interface RegenmonChatProps {
   state: RegenmonState
@@ -95,132 +272,108 @@ interface RegenmonChatProps {
 
 export function RegenmonChat({ state, onChatMessage }: RegenmonChatProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const [localHistory, setLocalHistory] = useState<ChatMessage[]>([])
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([])
   const [memories, setMemories] = useState<Memory[]>([])
   const [input, setInput] = useState("")
+  const [isTyping, setIsTyping] = useState(false)
   const [statPopup, setStatPopup] = useState<string | null>(null)
   const [consecutiveMessages, setConsecutiveMessages] = useState(0)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const messageCountRef = useRef(0)
 
   const typeData = REGENMON_TYPES[state.type]
 
-  // Load history and memories on mount
   useEffect(() => {
-    setLocalHistory(loadChatHistory())
+    setChatHistory(loadChatHistory())
     setMemories(loadMemories())
   }, [])
 
-  // Calculate energy from happiness (simulated energy = happiness * 0.8)
-  const energy = Math.round(state.happiness * 0.8)
-
-  const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({
-      api: "/api/chat",
-      prepareSendMessagesRequest: ({ id, messages: msgs }) => ({
-        body: {
-          messages: msgs,
-          id,
-          regenmonName: state.name,
-          regenmonType: typeData.label,
-          regenmonPersonality: state.personality,
-          happiness: state.happiness,
-          energy,
-          level: state.level,
-        },
-      }),
-    }),
-  })
-
-  const isLoading = status === "streaming" || status === "submitted"
-
-  // Sync AI SDK messages to local history
-  useEffect(() => {
-    if (messages.length === 0) return
-
-    const newHistory: ChatMessage[] = messages.map((m) => {
-      const text =
-        m.parts
-          ?.filter((p): p is { type: "text"; text: string } => p.type === "text")
-          .map((p) => p.text)
-          .join("") || ""
-      return {
-        id: m.id,
-        role: m.role as "user" | "assistant",
-        text,
-        timestamp: Date.now(),
-      }
-    })
-
-    setLocalHistory(newHistory)
-    saveChatHistory(newHistory)
-  }, [messages])
-
-  // Auto scroll
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [messages, isLoading])
-
-  // Detect memories from user messages
-  useEffect(() => {
-    if (messages.length === 0) return
-    const lastMsg = messages[messages.length - 1]
-    if (lastMsg.role !== "user") return
-
-    const text =
-      lastMsg.parts
-        ?.filter((p): p is { type: "text"; text: string } => p.type === "text")
-        .map((p) => p.text)
-        .join("") || ""
-
-    const newMemories = detectMemories(text, memories)
-    if (newMemories.length > 0) {
-      const updated = [...memories, ...newMemories].slice(-10)
-      setMemories(updated)
-      saveMemories(updated)
-    }
-  }, [messages, memories])
+  }, [chatHistory, isTyping])
 
   const showStatChange = useCallback((text: string) => {
     setStatPopup(text)
     setTimeout(() => setStatPopup(null), 1500)
   }, [])
 
-  const handleSend = () => {
-    if (!input.trim() || isLoading) return
+  const handleSend = useCallback(() => {
+    if (!input.trim() || isTyping) return
+
+    const userText = input.trim()
+    setInput("")
 
     const newCount = consecutiveMessages + 1
     setConsecutiveMessages(newCount)
 
-    sendMessage({ text: input.trim() })
-    setInput("")
-    onChatMessage()
+    // Add user message
+    const userMsg: ChatMessage = {
+      id: `user-${Date.now()}`,
+      role: "user",
+      text: userText,
+      timestamp: Date.now(),
+    }
 
+    const updatedHistory = [...chatHistory, userMsg]
+    setChatHistory(updatedHistory)
+    saveChatHistory(updatedHistory)
+
+    // Detect memories
+    const newMemories = detectMemories(userText, memories)
+    let currentMemories = memories
+    if (newMemories.length > 0) {
+      currentMemories = [...memories, ...newMemories].slice(-10)
+      setMemories(currentMemories)
+      saveMemories(currentMemories)
+    }
+
+    // Trigger stat change
+    onChatMessage()
     if (newCount > 5) {
       showStatChange("+5 Felicidad / -8 Energia")
     } else {
       showStatChange("+5 Felicidad / -3 Energia")
     }
 
-    if (inputRef.current) inputRef.current.focus()
-  }
+    // Simulate typing delay
+    setIsTyping(true)
+    const typingDelay = 600 + Math.random() * 1200
 
-  // Reset consecutive count after 30s of no messages
+    setTimeout(() => {
+      messageCountRef.current += 1
+
+      const response = generateResponse({
+        state,
+        userInput: userText,
+        memories: currentMemories,
+        messageCount: messageCountRef.current,
+      })
+
+      const assistantMsg: ChatMessage = {
+        id: `assistant-${Date.now()}`,
+        role: "assistant",
+        text: response,
+        timestamp: Date.now(),
+      }
+
+      const finalHistory = [...updatedHistory, assistantMsg]
+      setChatHistory(finalHistory)
+      saveChatHistory(finalHistory)
+      setIsTyping(false)
+    }, typingDelay)
+
+    if (inputRef.current) inputRef.current.focus()
+  }, [input, isTyping, chatHistory, memories, state, consecutiveMessages, onChatMessage, showStatChange])
+
+  // Reset consecutive count after 30s
   useEffect(() => {
     if (consecutiveMessages === 0) return
     const timer = setTimeout(() => setConsecutiveMessages(0), 30000)
     return () => clearTimeout(timer)
   }, [consecutiveMessages])
-
-  const displayMessages = messages.length > 0 ? messages : localHistory.length > 0
-    ? localHistory.map((m) => ({
-        id: m.id,
-        role: m.role,
-        parts: [{ type: "text" as const, text: m.text }],
-      }))
-    : []
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -282,58 +435,49 @@ export function RegenmonChat({ state, onChatMessage }: RegenmonChatProps) {
             ref={scrollRef}
             className="h-64 overflow-y-auto p-4 flex flex-col gap-3 scroll-smooth"
           >
-            {displayMessages.length === 0 && (
+            {chatHistory.length === 0 && !isTyping && (
               <div className="flex-1 flex items-center justify-center">
-                <p className="text-xs font-mono text-muted-foreground text-center">
-                  Escribe un mensaje para hablar con {state.name}
+                <p className="text-xs font-mono text-muted-foreground text-center leading-relaxed">
+                  {"Escribe un mensaje para hablar con " + state.name + ". Puedes preguntarle como esta, pedirle un chiste, o contarle sobre ti!"}
                 </p>
               </div>
             )}
 
-            {displayMessages.map((message, i) => {
-              const text =
-                "text" in message
-                  ? (message as ChatMessage).text
-                  : (message as { parts: Array<{ type: string; text?: string }> }).parts
-                      ?.filter((p) => p.type === "text")
-                      .map((p) => p.text)
-                      .join("") || ""
-
-              const isUser = message.role === "user"
-
-              return (
+            {chatHistory.map((message) => (
+              <div
+                key={message.id}
+                className={cn(
+                  "flex",
+                  message.role === "user" ? "justify-end" : "justify-start",
+                  "animate-in slide-in-from-bottom-2 duration-200"
+                )}
+              >
                 <div
-                  key={message.id || i}
                   className={cn(
-                    "flex",
-                    isUser ? "justify-end" : "justify-start",
-                    "animate-in slide-in-from-bottom-2 duration-200"
+                    "max-w-[80%] px-3 py-2 rounded-2xl text-sm font-mono",
+                    message.role === "user"
+                      ? "bg-[hsl(var(--neon-cyan)/0.15)] text-[hsl(var(--neon-cyan))] border border-[hsl(170_100%_50%/0.3)] rounded-br-md"
+                      : "bg-secondary text-foreground border border-border rounded-bl-md"
                   )}
                 >
-                  <div
-                    className={cn(
-                      "max-w-[80%] px-3 py-2 rounded-2xl text-sm font-mono",
-                      isUser
-                        ? "bg-[hsl(var(--neon-cyan)/0.15)] text-[hsl(var(--neon-cyan))] border border-[hsl(170_100%_50%/0.3)] rounded-br-md"
-                        : "bg-secondary text-foreground border border-border rounded-bl-md"
-                    )}
-                  >
-                    {!isUser && (
-                      <span className="text-[10px] font-bold text-muted-foreground block mb-1">
-                        {state.name}
-                      </span>
-                    )}
-                    {text}
-                  </div>
+                  {message.role === "assistant" && (
+                    <span className="text-[10px] font-bold text-muted-foreground block mb-1">
+                      {state.name} {typeData.emoji}
+                    </span>
+                  )}
+                  {message.text}
                 </div>
-              )
-            })}
+              </div>
+            ))}
 
             {/* Typing indicator */}
-            {isLoading && (
+            {isTyping && (
               <div className="flex justify-start animate-in slide-in-from-bottom-2 duration-200">
                 <div className="px-4 py-2 rounded-2xl rounded-bl-md bg-secondary border border-border">
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-mono font-bold text-muted-foreground mr-1">
+                      {state.name}
+                    </span>
                     <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "0ms" }} />
                     <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "150ms" }} />
                     <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "300ms" }} />
@@ -357,8 +501,8 @@ export function RegenmonChat({ state, onChatMessage }: RegenmonChatProps) {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder={`Habla con ${state.name}...`}
-                disabled={isLoading}
+                placeholder={"Habla con " + state.name + "..."}
+                disabled={isTyping}
                 maxLength={200}
                 className={cn(
                   "flex-1 px-4 py-2.5 rounded-xl bg-secondary/50 border border-border",
@@ -370,11 +514,11 @@ export function RegenmonChat({ state, onChatMessage }: RegenmonChatProps) {
               />
               <button
                 type="submit"
-                disabled={!input.trim() || isLoading}
+                disabled={!input.trim() || isTyping}
                 className={cn(
                   "flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-300",
                   "border",
-                  input.trim() && !isLoading
+                  input.trim() && !isTyping
                     ? "bg-[hsl(var(--neon-cyan)/0.15)] text-[hsl(var(--neon-cyan))] border-[hsl(170_100%_50%/0.4)] hover:shadow-[0_0_15px_hsl(170_100%_50%/0.3)]"
                     : "bg-secondary text-muted-foreground border-border cursor-not-allowed"
                 )}
