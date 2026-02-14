@@ -6,6 +6,7 @@ import { useRegenmon } from "@/hooks/use-regenmon"
 import { RegenmonAvatar } from "@/components/regenmon-avatar"
 import { StatBar } from "@/components/stat-bar"
 import { ActionButtons } from "@/components/action-buttons"
+import { RegenmonChat } from "@/components/regenmon-chat"
 import { Pencil, Check, RotateCcw } from "lucide-react"
 
 export function RegenmonCard() {
@@ -25,6 +26,7 @@ export function RegenmonCard() {
   const [editing, setEditing] = useState(false)
   const [nameInput, setNameInput] = useState("")
   const [showReset, setShowReset] = useState(false)
+  const [showChat, setShowChat] = useState(false)
 
   if (!mounted) {
     return (
@@ -186,8 +188,17 @@ export function RegenmonCard() {
           onFeed={feed}
           onPlay={play}
           onTrain={train}
+          onChat={() => setShowChat((prev) => !prev)}
           cooldown={cooldown}
         />
+
+        {/* Chat panel */}
+        {showChat && (
+          <RegenmonChat
+            regenmonState={state}
+            onClose={() => setShowChat(false)}
+          />
+        )}
 
         {/* Footer tip */}
         <p className="text-center text-[10px] font-mono text-muted-foreground tracking-wider">
