@@ -1,6 +1,6 @@
 "use client"
 
-import { usePrivy } from "@privy-io/react-auth"
+import { usePrivy, useLogin } from "@privy-io/react-auth"
 import { useIsPrivyAvailable } from "@/components/privy-provider"
 import { GameHeader } from "@/components/game-header"
 import { RegenmonCard } from "@/components/regenmon-card"
@@ -8,10 +8,12 @@ import { useCoins } from "@/hooks/use-coins"
 import { useActionHistory } from "@/hooks/use-action-history"
 
 function GameWithPrivy() {
-  const { authenticated, user, login, logout, ready } = usePrivy()
+  const { authenticated, user, logout, ready } = usePrivy()
+  const { login } = useLogin()
   const userId = user?.id ?? null
   const privyUser = user as { email?: { address?: string }; google?: { email?: string } } | null
   const userEmail = privyUser?.email?.address ?? privyUser?.google?.email ?? null
+  console.log("[v0] GameWithPrivy:", { ready, authenticated, userId, userEmail })
 
   const { coins, coinDelta, spendCoins, earnCoins, canAfford, tryEarnFromChat, feedCost } =
     useCoins(userId)
@@ -31,7 +33,7 @@ function GameWithPrivy() {
       userEmail={userEmail}
       coins={coins}
       coinDelta={coinDelta}
-      onLogin={login}
+      onLogin={() => login({ loginMethods: ["email", "google"] })}
       onLogout={logout}
       userId={userId}
       feedCost={feedCost}
@@ -149,6 +151,7 @@ function GameShell({
 
 export default function Home() {
   const privyAvailable = useIsPrivyAvailable()
+  console.log("[v0] Home render - privyAvailable:", privyAvailable)
 
   if (privyAvailable) {
     return <GameWithPrivy />
