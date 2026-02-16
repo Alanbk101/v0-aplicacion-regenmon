@@ -44,10 +44,14 @@ export function ActionButtons({
       icon: <UtensilsCrossed className="w-5 h-5" />,
       onClick: onFeed,
       colorClass: "text-[hsl(var(--neon-cyan))]",
-      glowClass: "hover:shadow-[0_0_25px_hsl(170_100%_50%/0.3)] active:shadow-[0_0_35px_hsl(170_100%_50%/0.5)]",
-      borderClass: "border-[hsl(170_100%_50%/0.3)] hover:border-[hsl(var(--neon-cyan))]",
+      glowClass:
+        "hover:shadow-[0_0_25px_hsl(170_100%_50%/0.3)] active:shadow-[0_0_35px_hsl(170_100%_50%/0.5)]",
+      borderClass:
+        "border-[hsl(170_100%_50%/0.3)] hover:border-[hsl(var(--neon-cyan))]",
       disabled: feedDisabled,
-      tooltip: feedDisabled ? "Habla con tu Regenmon para ganar monedas" : undefined,
+      tooltip: feedDisabled
+        ? "Necesitas 10 $FRUTA - Habla con tu Regenmon para ganar monedas"
+        : undefined,
     },
     {
       label: "Jugar",
@@ -55,8 +59,10 @@ export function ActionButtons({
       icon: <Gamepad2 className="w-5 h-5" />,
       onClick: onPlay,
       colorClass: "text-[hsl(var(--neon-pink))]",
-      glowClass: "hover:shadow-[0_0_25px_hsl(330_100%_60%/0.3)] active:shadow-[0_0_35px_hsl(330_100%_60%/0.5)]",
-      borderClass: "border-[hsl(330_100%_60%/0.3)] hover:border-[hsl(var(--neon-pink))]",
+      glowClass:
+        "hover:shadow-[0_0_25px_hsl(330_100%_60%/0.3)] active:shadow-[0_0_35px_hsl(330_100%_60%/0.5)]",
+      borderClass:
+        "border-[hsl(330_100%_60%/0.3)] hover:border-[hsl(var(--neon-pink))]",
     },
     {
       label: "Entrenar",
@@ -64,8 +70,10 @@ export function ActionButtons({
       icon: <Dumbbell className="w-5 h-5" />,
       onClick: onTrain,
       colorClass: "text-[hsl(var(--neon-yellow))]",
-      glowClass: "hover:shadow-[0_0_25px_hsl(50_100%_55%/0.3)] active:shadow-[0_0_35px_hsl(50_100%_55%/0.5)]",
-      borderClass: "border-[hsl(50_100%_55%/0.3)] hover:border-[hsl(var(--neon-yellow))]",
+      glowClass:
+        "hover:shadow-[0_0_25px_hsl(50_100%_55%/0.3)] active:shadow-[0_0_35px_hsl(50_100%_55%/0.5)]",
+      borderClass:
+        "border-[hsl(50_100%_55%/0.3)] hover:border-[hsl(var(--neon-yellow))]",
     },
     {
       label: "Hablar",
@@ -73,8 +81,10 @@ export function ActionButtons({
       icon: <MessageCircle className="w-5 h-5" />,
       onClick: onChat,
       colorClass: "text-[hsl(var(--neon-green))]",
-      glowClass: "hover:shadow-[0_0_25px_hsl(120_70%_50%/0.3)] active:shadow-[0_0_35px_hsl(120_70%_50%/0.5)]",
-      borderClass: "border-[hsl(120_70%_50%/0.3)] hover:border-[hsl(var(--neon-green))]",
+      glowClass:
+        "hover:shadow-[0_0_25px_hsl(120_70%_50%/0.3)] active:shadow-[0_0_35px_hsl(120_70%_50%/0.5)]",
+      borderClass:
+        "border-[hsl(120_70%_50%/0.3)] hover:border-[hsl(var(--neon-green))]",
       ignoresCooldown: true,
     },
   ]
@@ -82,7 +92,8 @@ export function ActionButtons({
   return (
     <div className="grid grid-cols-4 gap-3">
       {actions.map((action) => {
-        const isDisabled = action.disabled || (cooldown && !action.ignoresCooldown)
+        const isDisabled =
+          action.disabled || (cooldown && !action.ignoresCooldown)
         return (
           <div key={action.label} className="relative group/action">
             <button
@@ -96,7 +107,12 @@ export function ActionButtons({
                 !isDisabled && action.glowClass
               )}
             >
-              <div className={cn("transition-transform duration-200 group-hover/action:scale-110 group-active/action:scale-95", action.colorClass)}>
+              <div
+                className={cn(
+                  "transition-transform duration-200 group-hover/action:scale-110 group-active/action:scale-95",
+                  action.colorClass
+                )}
+              >
                 {action.icon}
               </div>
               <span className={cn("text-sm font-semibold", action.colorClass)}>

@@ -13,8 +13,8 @@ export interface RegenmonState {
 
 const STORAGE_KEY_PREFIX = "regenmon-save"
 const XP_PER_LEVEL = 100
-const HAPPINESS_DECAY_INTERVAL = 10000 // 10 seconds
-const HUNGER_DECAY_INTERVAL = 15000 // 15 seconds
+const HAPPINESS_DECAY_INTERVAL = 10000
+const HUNGER_DECAY_INTERVAL = 15000
 const COOLDOWN_MS = 3000
 
 const DEFAULT_STATE: RegenmonState = {
@@ -53,6 +53,17 @@ function saveState(userId: string | null, state: RegenmonState) {
   }
 }
 
+function migrateLocalState(userId: string) {
+  if (typeof window === "undefined") return
+  const authKey = getStorageKey(userId)
+  if (localStorage.getItem(authKey) !== null) return
+  const localKey = getStorageKey(null)
+  const localData = localStorage.getItem(localKey)
+  if (localData !== null) {
+    localStorage.setItem(authKey, localData)
+  }
+}
+
 export function useRegenmon(userId: string | null = null) {
   const [state, setState] = useState<RegenmonState>(DEFAULT_STATE)
   const [cooldown, setCooldown] = useState(false)
@@ -60,13 +71,12 @@ export function useRegenmon(userId: string | null = null) {
   const [mounted, setMounted] = useState(false)
   const cooldownTimer = useRef<NodeJS.Timeout | null>(null)
 
-  // Load from localStorage on mount or userId change
   useEffect(() => {
+    if (userId) migrateLocalState(userId)
     setState(loadState(userId))
     setMounted(true)
   }, [userId])
 
-  // Save to localStorage on state change
   useEffect(() => {
     if (mounted) {
       saveState(userId, state)
@@ -85,7 +95,7 @@ export function useRegenmon(userId: string | null = null) {
     return () => clearInterval(interval)
   }, [mounted])
 
-  // Hunger decay (hunger increases over time = more hungry)
+  // Hunger decay
   useEffect(() => {
     if (!mounted) return
     const interval = setInterval(() => {
@@ -137,7 +147,6 @@ export function useRegenmon(userId: string | null = null) {
     [cooldown, startCooldown, triggerLevelUp]
   )
 
-  // Feed now reduces hunger and returns true (success tracked by caller for coins)
   const feed = useCallback((): boolean => {
     if (cooldown) return false
     performAction(20, 5, -30)

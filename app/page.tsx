@@ -1,108 +1,40 @@
 "use client"
 
 import { usePrivy } from "@privy-io/react-auth"
-import { useIsPrivyAvailable } from "@/components/privy-provider"
 import { GameHeader } from "@/components/game-header"
 import { RegenmonCard } from "@/components/regenmon-card"
 import { useCoins } from "@/hooks/use-coins"
 import { useActionHistory } from "@/hooks/use-action-history"
 
-function GameWithPrivy() {
+export default function Home() {
   const { authenticated, user, login, logout, ready } = usePrivy()
-  const userId = user?.id ?? null
-  const privyUser = user as { email?: { address?: string }; google?: { email?: string } } | null
-  const userEmail = privyUser?.email?.address ?? privyUser?.google?.email ?? null
 
-  const { coins, coinDelta, spendCoins, earnCoins, canAfford, tryEarnFromChat, feedCost } =
-    useCoins(userId)
+  const userId = user?.id ?? null
+  const privyUser = user as
+    | { email?: { address?: string }; google?: { email?: string } }
+    | null
+  const userEmail =
+    privyUser?.email?.address ?? privyUser?.google?.email ?? null
+
+  const {
+    coins,
+    coinDelta,
+    spendCoins,
+    earnCoins,
+    canAfford,
+    tryEarnFromChat,
+    feedCost,
+  } = useCoins(userId)
   const { history, logAction } = useActionHistory(userId)
 
   if (!ready) {
     return (
       <main className="relative min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-2 border-[hsl(170_100%_50%)] border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-[hsl(var(--neon-cyan))] border-t-transparent rounded-full animate-spin" />
       </main>
     )
   }
 
-  return (
-    <GameShell
-      authenticated={authenticated}
-      userEmail={userEmail}
-      coins={coins}
-      coinDelta={coinDelta}
-      onLogin={login}
-      onLogout={logout}
-      userId={userId}
-      feedCost={feedCost}
-      canAfford={canAfford}
-      spendCoins={spendCoins}
-      earnCoins={earnCoins}
-      tryEarnFromChat={tryEarnFromChat}
-      logAction={logAction}
-      history={history}
-    />
-  )
-}
-
-function GameWithoutPrivy() {
-  const { coins, coinDelta, spendCoins, earnCoins, canAfford, tryEarnFromChat, feedCost } =
-    useCoins(null)
-  const { history, logAction } = useActionHistory(null)
-
-  return (
-    <GameShell
-      authenticated={false}
-      userEmail={null}
-      coins={coins}
-      coinDelta={coinDelta}
-      onLogin={() => {}}
-      onLogout={() => {}}
-      userId={null}
-      feedCost={feedCost}
-      canAfford={canAfford}
-      spendCoins={spendCoins}
-      earnCoins={earnCoins}
-      tryEarnFromChat={tryEarnFromChat}
-      logAction={logAction}
-      history={history}
-    />
-  )
-}
-
-interface GameShellProps {
-  authenticated: boolean
-  userEmail: string | null
-  coins: number
-  coinDelta: { amount: number; id: number } | null
-  onLogin: () => void
-  onLogout: () => void
-  userId: string | null
-  feedCost: number
-  canAfford: (amount: number) => boolean
-  spendCoins: (amount: number) => boolean
-  earnCoins: (amount: number) => void
-  tryEarnFromChat: () => number
-  logAction: (action: string, coins: number) => void
-  history: Array<{ action: string; coins: number; timestamp: number }>
-}
-
-function GameShell({
-  authenticated,
-  userEmail,
-  coins,
-  coinDelta,
-  onLogin,
-  onLogout,
-  userId,
-  feedCost,
-  canAfford,
-  spendCoins,
-  earnCoins,
-  tryEarnFromChat,
-  logAction,
-  history,
-}: GameShellProps) {
   return (
     <main className="relative min-h-screen flex flex-col items-center justify-center px-4 py-8 overflow-hidden">
       {/* Background grid pattern */}
@@ -127,8 +59,8 @@ function GameShell({
           userEmail={userEmail}
           coins={coins}
           coinDelta={coinDelta}
-          onLogin={onLogin}
-          onLogout={onLogout}
+          onLogin={login}
+          onLogout={logout}
         />
         <RegenmonCard
           userId={userId}
@@ -145,14 +77,4 @@ function GameShell({
       </div>
     </main>
   )
-}
-
-export default function Home() {
-  const privyAvailable = useIsPrivyAvailable()
-
-  if (privyAvailable) {
-    return <GameWithPrivy />
-  }
-
-  return <GameWithoutPrivy />
 }

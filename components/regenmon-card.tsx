@@ -53,6 +53,7 @@ export function RegenmonCard({
   const [nameInput, setNameInput] = useState("")
   const [showReset, setShowReset] = useState(false)
   const [showChat, setShowChat] = useState(false)
+  const [reactionMsg, setReactionMsg] = useState<string | null>(null)
 
   if (!mounted) {
     return (
@@ -60,6 +61,11 @@ export function RegenmonCard({
         <div className="w-8 h-8 border-2 border-[hsl(var(--neon-cyan))] border-t-transparent rounded-full animate-spin" />
       </div>
     )
+  }
+
+  const showReaction = (msg: string) => {
+    setReactionMsg(msg)
+    setTimeout(() => setReactionMsg(null), 2500)
   }
 
   const startEditing = () => {
@@ -87,23 +93,45 @@ export function RegenmonCard({
 
   const handleFeed = () => {
     if (authenticated) {
+      if (!canAfford(feedCost)) {
+        showReaction("Necesitas monedas... hablemos y mejora conmigo")
+        return
+      }
       const spent = spendCoins(feedCost)
       if (!spent) return
       feed()
       logAction("Alimentar", -feedCost)
+      const reactions = [
+        "Nam nam! Gracias por la comida",
+        "Que rico estuvo eso!",
+        "Me encanta la fruta!",
+        "Mmm delicioso!",
+      ]
+      showReaction(reactions[Math.floor(Math.random() * reactions.length)])
     } else {
       feed()
+      showReaction("Inicia sesion para que se guarden tus acciones")
     }
   }
 
   const handlePlay = () => {
     play()
-    if (authenticated) logAction("Jugar", 0)
+    if (authenticated) {
+      logAction("Jugar", 0)
+      showReaction("Que divertido! Me encanta jugar!")
+    } else {
+      showReaction("Inicia sesion para que se guarden tus acciones")
+    }
   }
 
   const handleTrain = () => {
     train()
-    if (authenticated) logAction("Entrenar", 0)
+    if (authenticated) {
+      logAction("Entrenar", 0)
+      showReaction("Me siento mas fuerte!")
+    } else {
+      showReaction("Inicia sesion para que se guarden tus acciones")
+    }
   }
 
   const handleEarnFromChat = useCallback(() => {
@@ -165,6 +193,22 @@ export function RegenmonCard({
             celebrating={celebrating}
           />
         </div>
+
+        {/* Regenmon Reaction Message */}
+        {reactionMsg && (
+          <div className="flex justify-center animate-fade-in">
+            <div
+              className={cn(
+                "px-4 py-2 rounded-xl text-sm font-mono",
+                "bg-[hsl(var(--neon-cyan)/0.1)] text-[hsl(var(--neon-cyan))]",
+                "border border-[hsl(170_100%_50%/0.3)]",
+                "shadow-[0_0_15px_hsl(170_100%_50%/0.15)]"
+              )}
+            >
+              {reactionMsg}
+            </div>
+          </div>
+        )}
 
         {/* Editable Name */}
         <div className="flex items-center justify-center gap-2">
@@ -272,7 +316,7 @@ export function RegenmonCard({
         <p className="text-center text-[10px] font-mono text-muted-foreground tracking-wider">
           {authenticated
             ? `Alimentar cuesta ${feedCost} $FRUTA. Habla con tu Regenmon para ganar monedas.`
-            : "La felicidad disminuye con el tiempo. Cuida a tu Regenmon."}
+            : "La felicidad disminuye con el tiempo. Inicia sesion para guardar tu progreso."}
         </p>
       </div>
 

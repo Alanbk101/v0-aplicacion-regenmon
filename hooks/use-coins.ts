@@ -6,13 +6,13 @@ const DEFAULT_COINS = 100
 const FEED_COST = 10
 
 function getStorageKey(userId: string | null) {
-  return userId ? `regenmon-coins-${userId}` : null
+  return userId ? `regenmon-coins-${userId}` : "regenmon-coins-local"
 }
 
 function loadCoins(userId: string | null): number {
-  if (typeof window === "undefined" || !userId) return DEFAULT_COINS
+  if (typeof window === "undefined") return DEFAULT_COINS
   try {
-    const saved = localStorage.getItem(getStorageKey(userId)!)
+    const saved = localStorage.getItem(getStorageKey(userId))
     if (saved !== null) return JSON.parse(saved)
   } catch {
     // ignore
@@ -21,11 +21,26 @@ function loadCoins(userId: string | null): number {
 }
 
 function saveCoins(userId: string | null, coins: number) {
-  if (typeof window === "undefined" || !userId) return
+  if (typeof window === "undefined") return
   try {
-    localStorage.setItem(getStorageKey(userId)!, JSON.stringify(coins))
+    localStorage.setItem(getStorageKey(userId), JSON.stringify(coins))
   } catch {
     // ignore
+  }
+}
+
+/**
+ * When a user logs in for the first time, migrate local coins to their
+ * authenticated key so they don't lose progress.
+ */
+function migrateLocalCoins(userId: string) {
+  if (typeof window === "undefined") return
+  const authKey = getStorageKey(userId)
+  if (localStorage.getItem(authKey) !== null) return // already has data
+  const localKey = getStorageKey(null)
+  const localData = localStorage.getItem(localKey)
+  if (localData !== null) {
+    localStorage.setItem(authKey, localData)
   }
 }
 
@@ -36,12 +51,13 @@ export function useCoins(userId: string | null) {
   const deltaCounter = useRef(0)
 
   useEffect(() => {
+    if (userId) migrateLocalCoins(userId)
     setCoins(loadCoins(userId))
     setMounted(true)
   }, [userId])
 
   useEffect(() => {
-    if (mounted && userId) {
+    if (mounted) {
       saveCoins(userId, coins)
     }
   }, [coins, mounted, userId])
@@ -77,7 +93,7 @@ export function useCoins(userId: string | null) {
     [coins]
   )
 
-  // Probabilistic coin earning from chat — returns amount earned (0 if none)
+  // Probabilistic coin earning from chat -- harder as you approach 100
   const tryEarnFromChat = useCallback((): number => {
     const probability = Math.max(0.1, 1 - coins / 120)
     if (Math.random() > probability) return 0

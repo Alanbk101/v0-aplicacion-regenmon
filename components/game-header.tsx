@@ -78,7 +78,9 @@ export function GameHeader({
 
       {/* Logo */}
       <div className="flex items-center gap-2">
-        <span className="text-3xl" role="img" aria-label="huevo">{"🥚"}</span>
+        <span className="text-3xl" role="img" aria-label="huevo">
+          {"\uD83E\uDD5A"}
+        </span>
         <h1 className="text-3xl md:text-4xl font-bold tracking-tighter font-mono">
           <span className="text-[hsl(var(--neon-cyan))]">REGEN</span>
           <span className="text-[hsl(var(--neon-pink))]">MON</span>

@@ -103,6 +103,10 @@ const config: Config = {
           '0%': { opacity: '1', transform: 'translateX(-50%) translateY(0)' },
           '100%': { opacity: '0', transform: 'translateX(-50%) translateY(-24px)' },
         },
+        'fade-in': {
+          '0%': { opacity: '0', transform: 'translateY(4px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
@@ -112,6 +116,7 @@ const config: Config = {
         celebrate: 'celebrate 0.6s ease-in-out',
         sparkle: 'sparkle 0.8s ease-in-out',
         'float-up': 'float-up 1.5s ease-out forwards',
+        'fade-in': 'fade-in 0.3s ease-out',
       },
     },
   },

@@ -14,11 +14,11 @@ export function CoinDisplay({ coins, authenticated, coinDelta }: CoinDisplayProp
     <div className="relative flex items-center gap-1.5">
       <Coins className="w-4 h-4 text-[hsl(var(--neon-yellow))]" />
       <span className="text-sm font-mono font-bold text-[hsl(var(--neon-yellow))]">
-        {authenticated ? coins : "$FRUTA"}
+        {authenticated ? `${coins} $FRUTA` : "$FRUTA"}
       </span>
 
       {/* Floating delta animation */}
-      {coinDelta && (
+      {coinDelta && authenticated && (
         <span
           key={coinDelta.id}
           className={cn(
