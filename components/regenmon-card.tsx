@@ -86,33 +86,28 @@ export function RegenmonCard({
   }
 
   const handleFeed = () => {
-    if (authenticated) {
-      const spent = spendCoins(feedCost)
-      if (!spent) return
-      feed()
-      logAction("Alimentar", -feedCost)
-    } else {
-      feed()
-    }
+    const spent = spendCoins(feedCost)
+    if (!spent) return
+    feed()
+    logAction("Alimentar", -feedCost)
   }
 
   const handlePlay = () => {
     play()
-    if (authenticated) logAction("Jugar", 0)
+    logAction("Jugar", 0)
   }
 
   const handleTrain = () => {
     train()
-    if (authenticated) logAction("Entrenar", 0)
+    logAction("Entrenar", 0)
   }
 
   const handleEarnFromChat = useCallback(() => {
-    if (!authenticated) return
     const earned = tryEarnFromChat()
     if (earned > 0) {
       logAction("Chat - Monedas ganadas", earned)
     }
-  }, [authenticated, tryEarnFromChat, logAction])
+  }, [tryEarnFromChat, logAction])
 
   return (
     <div
@@ -245,8 +240,8 @@ export function RegenmonCard({
           />
         </div>
 
-        {/* Action History (authenticated only) */}
-        {authenticated && <ActionHistory history={history} />}
+        {/* Action History */}
+        <ActionHistory history={history} />
 
         {/* Action Buttons */}
         <ActionButtons
@@ -270,9 +265,7 @@ export function RegenmonCard({
 
         {/* Footer tip */}
         <p className="text-center text-[10px] font-mono text-muted-foreground tracking-wider">
-          {authenticated
-            ? `Alimentar cuesta ${feedCost} $FRUTA. Habla con tu Regenmon para ganar monedas.`
-            : "La felicidad disminuye con el tiempo. Cuida a tu Regenmon."}
+          {`Alimentar cuesta ${feedCost} $FRUTA. Habla con tu Regenmon para ganar monedas.`}
         </p>
       </div>
 

@@ -35,12 +35,12 @@ export function ActionButtons({
   canAffordFeed,
   authenticated,
 }: ActionButtonsProps) {
-  const feedDisabled = authenticated && !canAffordFeed
+  const feedDisabled = !canAffordFeed
 
   const actions: ActionConfig[] = [
     {
       label: "Alimentar",
-      detail: authenticated ? "10 $FRUTA" : "+20 Felicidad",
+      detail: "10 $FRUTA",
       icon: <UtensilsCrossed className="w-5 h-5" />,
       onClick: onFeed,
       colorClass: "text-[hsl(var(--neon-cyan))]",

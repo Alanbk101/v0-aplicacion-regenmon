@@ -6,13 +6,13 @@ const DEFAULT_COINS = 100
 const FEED_COST = 10
 
 function getStorageKey(userId: string | null) {
-  return userId ? `regenmon-coins-${userId}` : null
+  return userId ? `regenmon-coins-${userId}` : "regenmon-coins-local"
 }
 
 function loadCoins(userId: string | null): number {
-  if (typeof window === "undefined" || !userId) return DEFAULT_COINS
+  if (typeof window === "undefined") return DEFAULT_COINS
   try {
-    const saved = localStorage.getItem(getStorageKey(userId)!)
+    const saved = localStorage.getItem(getStorageKey(userId))
     if (saved !== null) return JSON.parse(saved)
   } catch {
     // ignore
@@ -21,9 +21,9 @@ function loadCoins(userId: string | null): number {
 }
 
 function saveCoins(userId: string | null, coins: number) {
-  if (typeof window === "undefined" || !userId) return
+  if (typeof window === "undefined") return
   try {
-    localStorage.setItem(getStorageKey(userId)!, JSON.stringify(coins))
+    localStorage.setItem(getStorageKey(userId), JSON.stringify(coins))
   } catch {
     // ignore
   }
@@ -41,7 +41,7 @@ export function useCoins(userId: string | null) {
   }, [userId])
 
   useEffect(() => {
-    if (mounted && userId) {
+    if (mounted) {
       saveCoins(userId, coins)
     }
   }, [coins, mounted, userId])
