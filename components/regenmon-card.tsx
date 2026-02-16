@@ -54,38 +54,15 @@ export function RegenmonCard({
   const [showReset, setShowReset] = useState(false)
   const [showChat, setShowChat] = useState(false)
 
-  if (!mounted) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-8 h-8 border-2 border-[hsl(var(--neon-cyan))] border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
-  }
-
-  const startEditing = () => {
-    setNameInput(state.name)
-    setEditing(true)
-  }
-
-  const saveName = () => {
-    const trimmed = nameInput.trim()
-    if (trimmed.length > 0) {
-      setName(trimmed)
+  const handleEarnFromChat = useCallback(() => {
+    if (!authenticated) return
+    const earned = tryEarnFromChat()
+    if (earned > 0) {
+      logAction("Chat - Monedas ganadas", earned)
     }
-    setEditing(false)
-  }
+  }, [authenticated, tryEarnFromChat, logAction])
 
-  const handleReset = () => {
-    if (showReset) {
-      resetGame()
-      setShowReset(false)
-    } else {
-      setShowReset(true)
-      setTimeout(() => setShowReset(false), 3000)
-    }
-  }
-
-  const handleFeed = () => {
+  const handleFeed = useCallback(() => {
     if (authenticated) {
       const spent = spendCoins(feedCost)
       if (!spent) return
@@ -94,25 +71,49 @@ export function RegenmonCard({
     } else {
       feed()
     }
-  }
+  }, [authenticated, spendCoins, feedCost, feed, logAction])
 
-  const handlePlay = () => {
+  const handlePlay = useCallback(() => {
     play()
     if (authenticated) logAction("Jugar", 0)
-  }
+  }, [play, authenticated, logAction])
 
-  const handleTrain = () => {
+  const handleTrain = useCallback(() => {
     train()
     if (authenticated) logAction("Entrenar", 0)
-  }
+  }, [train, authenticated, logAction])
 
-  const handleEarnFromChat = useCallback(() => {
-    if (!authenticated) return
-    const earned = tryEarnFromChat()
-    if (earned > 0) {
-      logAction("Chat - Monedas ganadas", earned)
+  const startEditing = useCallback(() => {
+    setNameInput(state.name)
+    setEditing(true)
+  }, [state.name])
+
+  const saveName = useCallback(() => {
+    const trimmed = nameInput.trim()
+    if (trimmed.length > 0) {
+      setName(trimmed)
     }
-  }, [authenticated, tryEarnFromChat, logAction])
+    setEditing(false)
+  }, [nameInput, setName])
+
+  const handleReset = useCallback(() => {
+    if (showReset) {
+      resetGame()
+      setShowReset(false)
+    } else {
+      setShowReset(true)
+      setTimeout(() => setShowReset(false), 3000)
+    }
+  }, [showReset, resetGame])
+
+  // Early return AFTER all hooks have been called
+  if (!mounted) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-8 h-8 border-2 border-[hsl(var(--neon-cyan))] border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <div
