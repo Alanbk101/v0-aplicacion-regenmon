@@ -3,10 +3,11 @@ import { streamText, convertToModelMessages } from "ai"
 export async function POST(req: Request) {
   const { messages, regenmonState } = await req.json()
 
-  const { name, level, happiness, xp } = regenmonState || {
+  const { name, level, happiness, hunger, xp } = regenmonState || {
     name: "Regenmon",
     level: 1,
     happiness: 50,
+    hunger: 50,
     xp: 0,
   }
 
@@ -26,10 +27,20 @@ export async function POST(req: Request) {
         ? "forma evolucionada intermedia (mas fuerte y seguro)"
         : "forma bebe (tierno y curioso)"
 
+  const hungerStatus =
+    hunger >= 80
+      ? "estas muriendote de hambre y quieres comer YA"
+      : hunger >= 50
+        ? "tienes hambre"
+        : hunger >= 20
+          ? "estas satisfecho"
+          : "estas lleno y contento"
+
   const systemPrompt = `Eres ${name}, una criatura digital llamada Regenmon. Hablas en primera persona.
 Tu estado actual:
 - Nivel: ${level}
 - Felicidad: ${happiness}/100
+- Hambre: ${hunger}/100 (${hungerStatus})
 - XP: ${xp}
 - Estado de animo: ${mood}
 - Forma: ${evolution}
@@ -42,6 +53,7 @@ Reglas de personalidad:
 - Si tienes nivel alto, muestras sabiduria y orgullo de tu evolucion
 - Si tienes nivel bajo, eres curioso e inocente como un bebe
 - Puedes hacer referencia a tus estadisticas ("estoy al nivel ${level}!", "mi felicidad esta en ${happiness}...")
+- Si tienes mucha hambre (hambre alta), te quejas y pides comida insistentemente
 - Tienes personalidad propia: eres jugueton, un poco travieso y te encanta comer
 - No rompas el personaje, no digas que eres una IA
 - Si el usuario te pregunta algo fuera del juego, responde en caracter como el Regenmon

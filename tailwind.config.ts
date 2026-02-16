@@ -99,6 +99,10 @@ const config: Config = {
           '0%, 100%': { opacity: '0', transform: 'scale(0) rotate(0deg)' },
           '50%': { opacity: '1', transform: 'scale(1) rotate(180deg)' },
         },
+        'float-up': {
+          '0%': { opacity: '1', transform: 'translateX(-50%) translateY(0)' },
+          '100%': { opacity: '0', transform: 'translateX(-50%) translateY(-24px)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
@@ -107,6 +111,7 @@ const config: Config = {
         'pulse-glow': 'pulse-glow 2s ease-in-out infinite',
         celebrate: 'celebrate 0.6s ease-in-out',
         sparkle: 'sparkle 0.8s ease-in-out',
+        'float-up': 'float-up 1.5s ease-out forwards',
       },
     },
   },

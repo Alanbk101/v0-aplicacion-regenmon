@@ -10,6 +10,7 @@ import type { RegenmonState } from "@/hooks/use-regenmon"
 interface RegenmonChatProps {
   regenmonState: RegenmonState
   onClose: () => void
+  onEarnCoins?: () => void
 }
 
 function getUIMessageText(msg: { parts?: Array<{ type: string; text?: string }> }): string {
@@ -20,10 +21,11 @@ function getUIMessageText(msg: { parts?: Array<{ type: string; text?: string }> 
     .join("")
 }
 
-export function RegenmonChat({ regenmonState, onClose }: RegenmonChatProps) {
+export function RegenmonChat({ regenmonState, onClose, onEarnCoins }: RegenmonChatProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const [input, setInput] = useState("")
+  const prevMessageCountRef = useRef(0)
 
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({
@@ -36,6 +38,7 @@ export function RegenmonChat({ regenmonState, onClose }: RegenmonChatProps) {
             name: regenmonState.name,
             level: regenmonState.level,
             happiness: regenmonState.happiness,
+            hunger: regenmonState.hunger,
             xp: regenmonState.xp,
           },
         },
@@ -45,15 +48,28 @@ export function RegenmonChat({ regenmonState, onClose }: RegenmonChatProps) {
 
   const isStreaming = status === "streaming" || status === "submitted"
 
+  // Scroll to bottom on new messages
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [messages])
 
+  // Focus input on mount
   useEffect(() => {
     inputRef.current?.focus()
   }, [])
+
+  // Trigger coin earning when a new assistant message finishes
+  useEffect(() => {
+    const assistantMessages = messages.filter((m) => m.role === "assistant")
+    const count = assistantMessages.length
+
+    if (count > prevMessageCountRef.current && status === "ready") {
+      prevMessageCountRef.current = count
+      onEarnCoins?.()
+    }
+  }, [messages, status, onEarnCoins])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -96,7 +112,7 @@ export function RegenmonChat({ regenmonState, onClose }: RegenmonChatProps) {
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
             <span className="text-3xl">
-              {regenmonState.happiness >= 50 ? "💬" : "😢"}
+              {regenmonState.happiness >= 50 ? "..." : "..."}
             </span>
             <p className="text-xs font-mono text-muted-foreground">
               {"Escribe algo para hablar con tu Regenmon"}
