@@ -1,42 +1,97 @@
 "use client"
 
-import { createContext, useContext } from "react"
-import { PrivyProvider as BasePrivyProvider } from "@privy-io/react-auth"
+import { createContext, useContext, useState, useEffect, useCallback } from "react"
 
-const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID
+interface AuthState {
+  ready: boolean
+  authenticated: boolean
+  user: { id: string; email: string } | null
+  login: () => void
+  logout: () => void
+}
 
-console.log("[v0] PRIVY_APP_ID available:", !!PRIVY_APP_ID)
+const AuthContext = createContext<AuthState>({
+  ready: false,
+  authenticated: false,
+  user: null,
+  login: () => {},
+  logout: () => {},
+})
 
-// Context to signal if Privy is available
-const PrivyAvailableContext = createContext(false)
+export function useAuth() {
+  return useContext(AuthContext)
+}
 
-export function useIsPrivyAvailable() {
-  return useContext(PrivyAvailableContext)
+const STORAGE_KEY = "regenmon-auth"
+
+function loadUser(): { id: string; email: string } | null {
+  if (typeof window === "undefined") return null
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) return JSON.parse(saved)
+  } catch {
+    // ignore
+  }
+  return null
+}
+
+function saveUser(user: { id: string; email: string } | null) {
+  if (typeof window === "undefined") return
+  try {
+    if (user) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
+    } else {
+      localStorage.removeItem(STORAGE_KEY)
+    }
+  } catch {
+    // ignore
+  }
 }
 
 export function PrivyProvider({ children }: { children: React.ReactNode }) {
-  if (!PRIVY_APP_ID) {
-    console.log("[v0] No PRIVY_APP_ID, rendering without Privy")
-    return (
-      <PrivyAvailableContext.Provider value={false}>
-        {children}
-      </PrivyAvailableContext.Provider>
-    )
-  }
+  const [user, setUser] = useState<{ id: string; email: string } | null>(null)
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    setUser(loadUser())
+    setReady(true)
+  }, [])
+
+  const login = useCallback(() => {
+    const email = window.prompt("Ingresa tu email o Gmail para iniciar sesion:")
+    if (!email || !email.trim()) return
+
+    const trimmed = email.trim().toLowerCase()
+    // Simple email validation
+    if (!trimmed.includes("@") || !trimmed.includes(".")) {
+      window.alert("Por favor ingresa un email valido.")
+      return
+    }
+
+    const newUser = {
+      id: `user-${btoa(trimmed)}`,
+      email: trimmed,
+    }
+    setUser(newUser)
+    saveUser(newUser)
+  }, [])
+
+  const logout = useCallback(() => {
+    setUser(null)
+    saveUser(null)
+  }, [])
 
   return (
-    <PrivyAvailableContext.Provider value={true}>
-      <BasePrivyProvider
-        appId={PRIVY_APP_ID}
-        config={{
-          appearance: {
-            theme: "dark",
-            accentColor: "#00FFCC",
-          },
-        }}
-      >
-        {children}
-      </BasePrivyProvider>
-    </PrivyAvailableContext.Provider>
+    <AuthContext.Provider
+      value={{
+        ready,
+        authenticated: !!user,
+        user,
+        login,
+        logout,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
   )
 }
