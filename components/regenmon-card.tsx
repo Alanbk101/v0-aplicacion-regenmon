@@ -1,14 +1,41 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { cn } from "@/lib/utils"
 import { useRegenmon } from "@/hooks/use-regenmon"
 import { RegenmonAvatar } from "@/components/regenmon-avatar"
 import { StatBar } from "@/components/stat-bar"
 import { ActionButtons } from "@/components/action-buttons"
+import { RegenmonChat } from "@/components/regenmon-chat"
+import { ActionHistory } from "@/components/action-history"
 import { Pencil, Check, RotateCcw } from "lucide-react"
+import type { ActionEntry } from "@/hooks/use-action-history"
 
-export function RegenmonCard() {
+interface RegenmonCardProps {
+  userId: string | null
+  authenticated: boolean
+  coins: number
+  feedCost: number
+  canAfford: (amount: number) => boolean
+  spendCoins: (amount: number) => boolean
+  earnCoins: (amount: number) => void
+  tryEarnFromChat: () => number
+  logAction: (action: string, coins: number) => void
+  history: ActionEntry[]
+}
+
+export function RegenmonCard({
+  userId,
+  authenticated,
+  coins,
+  feedCost,
+  canAfford,
+  spendCoins,
+  earnCoins,
+  tryEarnFromChat,
+  logAction,
+  history,
+}: RegenmonCardProps) {
   const {
     state,
     cooldown,
@@ -20,11 +47,12 @@ export function RegenmonCard() {
     setName,
     resetGame,
     xpPerLevel,
-  } = useRegenmon()
+  } = useRegenmon(userId)
 
   const [editing, setEditing] = useState(false)
   const [nameInput, setNameInput] = useState("")
   const [showReset, setShowReset] = useState(false)
+  const [showChat, setShowChat] = useState(false)
 
   if (!mounted) {
     return (
@@ -56,6 +84,35 @@ export function RegenmonCard() {
       setTimeout(() => setShowReset(false), 3000)
     }
   }
+
+  const handleFeed = () => {
+    if (authenticated) {
+      const spent = spendCoins(feedCost)
+      if (!spent) return
+      feed()
+      logAction("Alimentar", -feedCost)
+    } else {
+      feed()
+    }
+  }
+
+  const handlePlay = () => {
+    play()
+    if (authenticated) logAction("Jugar", 0)
+  }
+
+  const handleTrain = () => {
+    train()
+    if (authenticated) logAction("Entrenar", 0)
+  }
+
+  const handleEarnFromChat = useCallback(() => {
+    if (!authenticated) return
+    const earned = tryEarnFromChat()
+    if (earned > 0) {
+      logAction("Chat - Monedas ganadas", earned)
+    }
+  }, [authenticated, tryEarnFromChat, logAction])
 
   return (
     <div
@@ -158,7 +215,7 @@ export function RegenmonCard() {
                 "animate-celebrate"
               )}
             >
-              {"🎉"} Nivel {state.level} {"🎉"}
+              Nivel {state.level}
             </span>
           </div>
         )}
@@ -170,28 +227,52 @@ export function RegenmonCard() {
             value={state.happiness}
             max={100}
             color={state.happiness >= 50 ? "pink" : "cyan"}
-            icon={state.happiness >= 50 ? "❤️" : "💔"}
+            icon={state.happiness >= 50 ? "\u2764\uFE0F" : "\uD83D\uDC94"}
+          />
+          <StatBar
+            label="Hambre"
+            value={state.hunger}
+            max={100}
+            color={state.hunger >= 70 ? "cyan" : "yellow"}
+            icon={state.hunger >= 70 ? "\u26A0\uFE0F" : "\uD83C\uDF56"}
           />
           <StatBar
             label="Experiencia"
             value={state.xp}
             max={xpPerLevel}
             color="yellow"
-            icon="⚡"
+            icon={"\u26A1"}
           />
         </div>
 
+        {/* Action History (authenticated only) */}
+        {authenticated && <ActionHistory history={history} />}
+
         {/* Action Buttons */}
         <ActionButtons
-          onFeed={feed}
-          onPlay={play}
-          onTrain={train}
+          onFeed={handleFeed}
+          onPlay={handlePlay}
+          onTrain={handleTrain}
+          onChat={() => setShowChat((prev) => !prev)}
           cooldown={cooldown}
+          canAffordFeed={canAfford(feedCost)}
+          authenticated={authenticated}
         />
+
+        {/* Chat panel */}
+        {showChat && (
+          <RegenmonChat
+            regenmonState={state}
+            onClose={() => setShowChat(false)}
+            onEarnCoins={handleEarnFromChat}
+          />
+        )}
 
         {/* Footer tip */}
         <p className="text-center text-[10px] font-mono text-muted-foreground tracking-wider">
-          La felicidad disminuye con el tiempo. Cuida a tu Regenmon.
+          {authenticated
+            ? `Alimentar cuesta ${feedCost} $FRUTA. Habla con tu Regenmon para ganar monedas.`
+            : "La felicidad disminuye con el tiempo. Cuida a tu Regenmon."}
         </p>
       </div>
 
