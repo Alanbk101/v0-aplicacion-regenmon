@@ -29,6 +29,21 @@ function saveCoins(userId: string | null, coins: number) {
   }
 }
 
+/**
+ * When a user logs in for the first time, migrate local coins to their
+ * authenticated key so they don't lose progress.
+ */
+function migrateLocalCoins(userId: string) {
+  if (typeof window === "undefined") return
+  const authKey = getStorageKey(userId)
+  if (localStorage.getItem(authKey) !== null) return // already has data
+  const localKey = getStorageKey(null)
+  const localData = localStorage.getItem(localKey)
+  if (localData !== null) {
+    localStorage.setItem(authKey, localData)
+  }
+}
+
 export function useCoins(userId: string | null) {
   const [coins, setCoins] = useState(DEFAULT_COINS)
   const [mounted, setMounted] = useState(false)
@@ -36,6 +51,7 @@ export function useCoins(userId: string | null) {
   const deltaCounter = useRef(0)
 
   useEffect(() => {
+    if (userId) migrateLocalCoins(userId)
     setCoins(loadCoins(userId))
     setMounted(true)
   }, [userId])
@@ -77,7 +93,7 @@ export function useCoins(userId: string | null) {
     [coins]
   )
 
-  // Probabilistic coin earning from chat — returns amount earned (0 if none)
+  // Probabilistic coin earning from chat -- harder as you approach 100
   const tryEarnFromChat = useCallback((): number => {
     const probability = Math.max(0.1, 1 - coins / 120)
     if (Math.random() > probability) return 0

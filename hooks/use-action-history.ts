@@ -34,11 +34,23 @@ function saveHistory(userId: string | null, history: ActionEntry[]) {
   }
 }
 
+function migrateLocalHistory(userId: string) {
+  if (typeof window === "undefined") return
+  const authKey = getStorageKey(userId)
+  if (localStorage.getItem(authKey) !== null) return
+  const localKey = getStorageKey(null)
+  const localData = localStorage.getItem(localKey)
+  if (localData !== null) {
+    localStorage.setItem(authKey, localData)
+  }
+}
+
 export function useActionHistory(userId: string | null) {
   const [history, setHistory] = useState<ActionEntry[]>([])
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    if (userId) migrateLocalHistory(userId)
     setHistory(loadHistory(userId))
     setMounted(true)
   }, [userId])
