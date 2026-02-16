@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useEffect, useState } from "react"
+import { useRef, useEffect, useState, useMemo } from "react"
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport } from "ai"
 import { cn } from "@/lib/utils"
@@ -26,25 +26,49 @@ export function RegenmonChat({ regenmonState, onClose, onEarnCoins }: RegenmonCh
   const inputRef = useRef<HTMLInputElement>(null)
   const [input, setInput] = useState("")
   const prevMessageCountRef = useRef(0)
+  const onEarnCoinsRef = useRef(onEarnCoins)
 
-  const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({
-      api: "/api/chat",
-      prepareSendMessagesRequest: ({ id, messages }) => ({
-        body: {
-          id,
-          messages,
-          regenmonState: {
-            name: regenmonState.name,
-            level: regenmonState.level,
-            happiness: regenmonState.happiness,
-            hunger: regenmonState.hunger,
-            xp: regenmonState.xp,
-          },
-        },
-      }),
+  // Keep the ref in sync without causing re-renders
+  useEffect(() => {
+    onEarnCoinsRef.current = onEarnCoins
+  }, [onEarnCoins])
+
+  // Serialize the regenmon state for the transport body so the reference
+  // only changes when the actual values change, not on every render.
+  const statePayload = useMemo(
+    () => ({
+      name: regenmonState.name,
+      level: regenmonState.level,
+      happiness: regenmonState.happiness,
+      hunger: regenmonState.hunger,
+      xp: regenmonState.xp,
     }),
-  })
+    [
+      regenmonState.name,
+      regenmonState.level,
+      regenmonState.happiness,
+      regenmonState.hunger,
+      regenmonState.xp,
+    ]
+  )
+
+  // Memoize the transport so it is not recreated on every render
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/chat",
+        prepareSendMessagesRequest: ({ id, messages }) => ({
+          body: {
+            id,
+            messages,
+            regenmonState: statePayload,
+          },
+        }),
+      }),
+    [statePayload]
+  )
+
+  const { messages, sendMessage, status } = useChat({ transport })
 
   const isStreaming = status === "streaming" || status === "submitted"
 
@@ -67,9 +91,9 @@ export function RegenmonChat({ regenmonState, onClose, onEarnCoins }: RegenmonCh
 
     if (count > prevMessageCountRef.current && status === "ready") {
       prevMessageCountRef.current = count
-      onEarnCoins?.()
+      onEarnCoinsRef.current?.()
     }
-  }, [messages, status, onEarnCoins])
+  }, [messages, status])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -111,8 +135,8 @@ export function RegenmonChat({ regenmonState, onClose, onEarnCoins }: RegenmonCh
       >
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
-            <span className="text-3xl">
-              {regenmonState.happiness >= 50 ? "..." : "..."}
+            <span className="text-3xl" role="img" aria-label="regenmon">
+              {regenmonState.happiness >= 50 ? "\u2728" : "\uD83D\uDCA7"}
             </span>
             <p className="text-xs font-mono text-muted-foreground">
               {"Escribe algo para hablar con tu Regenmon"}

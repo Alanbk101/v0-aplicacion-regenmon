@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { cn } from "@/lib/utils"
 import { useRegenmon } from "@/hooks/use-regenmon"
 import { RegenmonAvatar } from "@/components/regenmon-avatar"
@@ -106,13 +106,13 @@ export function RegenmonCard({
     if (authenticated) logAction("Entrenar", 0)
   }
 
-  const handleEarnFromChat = () => {
+  const handleEarnFromChat = useCallback(() => {
     if (!authenticated) return
     const earned = tryEarnFromChat()
     if (earned > 0) {
       logAction("Chat - Monedas ganadas", earned)
     }
-  }
+  }, [authenticated, tryEarnFromChat, logAction])
 
   return (
     <div
