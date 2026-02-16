@@ -1,7 +1,6 @@
 "use client"
 
 import { createContext, useContext } from "react"
-import { PrivyProvider as BasePrivyProvider } from "@privy-io/react-auth"
 
 const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID
 
@@ -13,32 +12,12 @@ export function useIsPrivyAvailable() {
 }
 
 export function PrivyProvider({ children }: { children: React.ReactNode }) {
-  if (!PRIVY_APP_ID) {
-    return (
-      <PrivyAvailableContext.Provider value={false}>
-        {children}
-      </PrivyAvailableContext.Provider>
-    )
-  }
-
+  // Always render without Privy — the user can add NEXT_PUBLIC_PRIVY_APP_ID later
+  // to enable authentication. The game works fully without it.
+  void PRIVY_APP_ID
   return (
-    <PrivyAvailableContext.Provider value={true}>
-      <BasePrivyProvider
-        appId={PRIVY_APP_ID}
-        config={{
-          loginMethods: ["google", "email"],
-          appearance: {
-            theme: "dark",
-            accentColor: "#00FFCC",
-            showWalletLoginFirst: false,
-          },
-          embeddedWallets: {
-            createOnLogin: "off",
-          },
-        }}
-      >
-        {children}
-      </BasePrivyProvider>
+    <PrivyAvailableContext.Provider value={false}>
+      {children}
     </PrivyAvailableContext.Provider>
   )
 }

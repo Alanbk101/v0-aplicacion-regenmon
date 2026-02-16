@@ -1,74 +1,9 @@
 "use client"
 
-import { usePrivy } from "@privy-io/react-auth"
-import { useIsPrivyAvailable } from "@/components/privy-provider"
 import { GameHeader } from "@/components/game-header"
 import { RegenmonCard } from "@/components/regenmon-card"
 import { useCoins } from "@/hooks/use-coins"
 import { useActionHistory } from "@/hooks/use-action-history"
-
-function GameWithPrivy() {
-  const { authenticated, user, login, logout, ready } = usePrivy()
-  const userId = user?.id ?? null
-  const privyUser = user as { email?: { address?: string }; google?: { email?: string } } | null
-  const userEmail = privyUser?.email?.address ?? privyUser?.google?.email ?? null
-
-  const { coins, coinDelta, spendCoins, earnCoins, canAfford, tryEarnFromChat, feedCost } =
-    useCoins(userId)
-  const { history, logAction } = useActionHistory(userId)
-
-  if (!ready) {
-    return (
-      <main className="relative min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-2 border-[hsl(170_100%_50%)] border-t-transparent rounded-full animate-spin" />
-      </main>
-    )
-  }
-
-  return (
-    <GameShell
-      authenticated={authenticated}
-      userEmail={userEmail}
-      coins={coins}
-      coinDelta={coinDelta}
-      onLogin={login}
-      onLogout={logout}
-      userId={userId}
-      feedCost={feedCost}
-      canAfford={canAfford}
-      spendCoins={spendCoins}
-      earnCoins={earnCoins}
-      tryEarnFromChat={tryEarnFromChat}
-      logAction={logAction}
-      history={history}
-    />
-  )
-}
-
-function GameWithoutPrivy() {
-  const { coins, coinDelta, spendCoins, earnCoins, canAfford, tryEarnFromChat, feedCost } =
-    useCoins(null)
-  const { history, logAction } = useActionHistory(null)
-
-  return (
-    <GameShell
-      authenticated={false}
-      userEmail={null}
-      coins={coins}
-      coinDelta={coinDelta}
-      onLogin={() => {}}
-      onLogout={() => {}}
-      userId={null}
-      feedCost={feedCost}
-      canAfford={canAfford}
-      spendCoins={spendCoins}
-      earnCoins={earnCoins}
-      tryEarnFromChat={tryEarnFromChat}
-      logAction={logAction}
-      history={history}
-    />
-  )
-}
 
 interface GameShellProps {
   authenticated: boolean
@@ -148,11 +83,26 @@ function GameShell({
 }
 
 export default function Home() {
-  const privyAvailable = useIsPrivyAvailable()
+  const { coins, coinDelta, spendCoins, earnCoins, canAfford, tryEarnFromChat, feedCost } =
+    useCoins(null)
+  const { history, logAction } = useActionHistory(null)
 
-  if (privyAvailable) {
-    return <GameWithPrivy />
-  }
-
-  return <GameWithoutPrivy />
+  return (
+    <GameShell
+      authenticated={false}
+      userEmail={null}
+      coins={coins}
+      coinDelta={coinDelta}
+      onLogin={() => {}}
+      onLogout={() => {}}
+      userId={null}
+      feedCost={feedCost}
+      canAfford={canAfford}
+      spendCoins={spendCoins}
+      earnCoins={earnCoins}
+      tryEarnFromChat={tryEarnFromChat}
+      logAction={logAction}
+      history={history}
+    />
+  )
 }
