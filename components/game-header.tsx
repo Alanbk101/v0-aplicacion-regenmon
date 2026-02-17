@@ -1,6 +1,8 @@
 "use client"
 
+import { cn } from "@/lib/utils"
 import { CoinDisplay } from "@/components/coin-display"
+import { LogIn, LogOut, User } from "lucide-react"
 
 interface GameHeaderProps {
   authenticated: boolean
@@ -13,18 +15,57 @@ interface GameHeaderProps {
 
 export function GameHeader({
   authenticated,
+  userEmail,
   coins,
   coinDelta,
+  onLogin,
+  onLogout,
 }: GameHeaderProps) {
   return (
     <header className="flex flex-col items-center gap-1 py-6 w-full">
-      {/* Coin display bar */}
-      <div className="flex items-center justify-end w-full px-1 mb-3">
+      {/* Top bar: coins left, auth right */}
+      <div className="flex items-center justify-between w-full px-1 mb-3">
         <CoinDisplay
           coins={coins}
           authenticated={authenticated}
           coinDelta={coinDelta}
         />
+
+        {authenticated ? (
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5 text-[hsl(var(--neon-cyan))]" />
+              <span className="text-[10px] font-mono text-muted-foreground truncate max-w-[100px]">
+                {userEmail ?? "Usuario"}
+              </span>
+            </div>
+            <button
+              onClick={onLogout}
+              className={cn(
+                "flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-mono",
+                "text-muted-foreground hover:text-destructive transition-colors",
+                "border border-border hover:border-destructive/40"
+              )}
+            >
+              <LogOut className="w-3 h-3" />
+              <span className="sr-only sm:not-sr-only">Salir</span>
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={onLogin}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold",
+              "text-[hsl(var(--neon-cyan))] bg-[hsl(170_100%_50%/0.08)]",
+              "border border-[hsl(170_100%_50%/0.3)] hover:border-[hsl(var(--neon-cyan))]",
+              "hover:bg-[hsl(170_100%_50%/0.15)] hover:shadow-[0_0_15px_hsl(170_100%_50%/0.2)]",
+              "transition-all"
+            )}
+          >
+            <LogIn className="w-3.5 h-3.5" />
+            Iniciar Sesion
+          </button>
+        )}
       </div>
 
       {/* Logo */}
