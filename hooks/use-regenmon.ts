@@ -151,6 +151,17 @@ export function useRegenmon(userId: string | null = null) {
     setState((prev) => ({ ...prev, name }))
   }, [])
 
+  const applyStatEffects = useCallback(
+    (effects: { happiness?: number; energy?: number; hunger?: number }) => {
+      setState((prev) => ({
+        ...prev,
+        happiness: Math.max(0, Math.min(100, prev.happiness + (effects.happiness ?? 0))),
+        hunger: Math.max(0, Math.min(100, prev.hunger + (effects.hunger ?? 0))),
+      }))
+    },
+    []
+  )
+
   const resetGame = useCallback(() => {
     const fresh = { ...DEFAULT_STATE, createdAt: Date.now() }
     setState(fresh)
@@ -166,6 +177,7 @@ export function useRegenmon(userId: string | null = null) {
     play,
     train,
     setName,
+    applyStatEffects,
     resetGame,
     xpPerLevel: XP_PER_LEVEL,
   }
