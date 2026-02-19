@@ -5,14 +5,24 @@ import { cn } from "@/lib/utils"
 import { useRegenmon } from "@/hooks/use-regenmon"
 import { useTraining, getStatEffects } from "@/hooks/use-training"
 import type { EvaluationResult } from "@/hooks/use-training"
+import { useHubSync } from "@/hooks/use-hub-sync"
 import { RegenmonAvatar } from "@/components/regenmon-avatar"
 import { StatBar } from "@/components/stat-bar"
 import { ActionButtons } from "@/components/action-buttons"
 import { RegenmonChat } from "@/components/regenmon-chat"
 import { ActionHistory } from "@/components/action-history"
 import { TrainingPanel } from "@/components/training-panel"
-import { Pencil, Check, RotateCcw, GraduationCap, Gamepad2 } from "lucide-react"
+import { RegisterHub } from "@/components/register-hub"
+import { Pencil, Check, RotateCcw, GraduationCap, Gamepad2, Globe } from "lucide-react"
 import type { ActionEntry } from "@/hooks/use-action-history"
+
+function getEvolutionEmoji(level: number) {
+  if (level >= 20) return "\uD83D\uDC09"
+  if (level >= 15) return "\uD83E\uDD8A"
+  if (level >= 10) return "\uD83D\uDC3A"
+  if (level >= 5) return "\uD83D\uDC23"
+  return "\uD83E\uDD5A"
+}
 
 interface RegenmonCardProps {
   userId: string | null
@@ -60,11 +70,21 @@ export function RegenmonCard({
     addTrainingResult,
   } = useTraining()
 
+  const getSyncData = useCallback(
+    () => ({
+      happiness: state.happiness,
+      hunger: state.hunger,
+      totalPoints,
+    }),
+    [state.happiness, state.hunger, totalPoints]
+  )
+  const { syncNow } = useHubSync(getSyncData)
+
   const [editing, setEditing] = useState(false)
   const [nameInput, setNameInput] = useState("")
   const [showReset, setShowReset] = useState(false)
   const [showChat, setShowChat] = useState(false)
-  const [activeTab, setActiveTab] = useState<"game" | "train">("game")
+  const [activeTab, setActiveTab] = useState<"game" | "train" | "social">("game")
   const [evolutionAlert, setEvolutionAlert] = useState<string | null>(null)
 
   const handleEarnFromChat = useCallback(() => {
@@ -139,8 +159,11 @@ export function RegenmonCard({
         )
         setTimeout(() => setEvolutionAlert(null), 5000)
       }
+
+      // Sync with HUB after training
+      syncNow()
     },
-    [applyStatEffects, addTrainingResult, earnCoins, state.name]
+    [applyStatEffects, addTrainingResult, earnCoins, state.name, syncNow]
   )
 
   // Early return AFTER all hooks have been called
@@ -189,12 +212,18 @@ export function RegenmonCard({
         >
           <GraduationCap className="w-4 h-4" />
           Entrenar
-          {stage > 1 && (
-            <span className="absolute top-1.5 right-6 flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full rounded-full bg-[hsl(25_100%_55%)] opacity-75 animate-ping" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-[hsl(25_100%_55%)]" />
-            </span>
+        </button>
+        <button
+          onClick={() => setActiveTab("social")}
+          className={cn(
+            "flex-1 flex items-center justify-center gap-2 py-3 text-xs font-mono font-bold transition-all",
+            activeTab === "social"
+              ? "text-[hsl(var(--neon-green))] border-b-2 border-[hsl(var(--neon-green))]"
+              : "text-muted-foreground hover:text-foreground"
           )}
+        >
+          <Globe className="w-4 h-4" />
+          Social
         </button>
       </div>
 
@@ -216,6 +245,19 @@ export function RegenmonCard({
             stage={stage}
             nextStageThreshold={nextStageThreshold}
             onClose={() => setActiveTab("game")}
+          />
+        </div>
+      )}
+
+      {/* Social tab */}
+      {activeTab === "social" && (
+        <div className="p-6">
+          <RegisterHub
+            regenmonName={state.name}
+            regenmonEmoji={getEvolutionEmoji(state.level)}
+            stats={{ happiness: state.happiness, hunger: state.hunger }}
+            totalPoints={totalPoints}
+            onRegistered={syncNow}
           />
         </div>
       )}
