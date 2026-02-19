@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
+import { SuppressWalletErrors } from '@/components/suppress-wallet-errors'
 
 import './globals.css'
 
@@ -29,6 +30,7 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
+        <SuppressWalletErrors />
         {children}
       </body>
     </html>
