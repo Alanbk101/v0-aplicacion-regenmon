@@ -3,13 +3,26 @@
 import { useState, useCallback } from "react"
 import { cn } from "@/lib/utils"
 import { useRegenmon } from "@/hooks/use-regenmon"
+import { useTraining, getStatEffects } from "@/hooks/use-training"
+import type { EvaluationResult } from "@/hooks/use-training"
+import { useHubSync } from "@/hooks/use-hub-sync"
 import { RegenmonAvatar } from "@/components/regenmon-avatar"
 import { StatBar } from "@/components/stat-bar"
 import { ActionButtons } from "@/components/action-buttons"
 import { RegenmonChat } from "@/components/regenmon-chat"
 import { ActionHistory } from "@/components/action-history"
-import { Pencil, Check, RotateCcw } from "lucide-react"
+import { TrainingPanel } from "@/components/training-panel"
+import { RegisterHub } from "@/components/register-hub"
+import { Pencil, Check, RotateCcw, GraduationCap, Gamepad2, Globe } from "lucide-react"
 import type { ActionEntry } from "@/hooks/use-action-history"
+
+function getEvolutionEmoji(level: number) {
+  if (level >= 20) return "\uD83D\uDC09"
+  if (level >= 15) return "\uD83E\uDD8A"
+  if (level >= 10) return "\uD83D\uDC3A"
+  if (level >= 5) return "\uD83D\uDC23"
+  return "\uD83E\uDD5A"
+}
 
 interface RegenmonCardProps {
   userId: string | null
@@ -45,66 +58,34 @@ export function RegenmonCard({
     play,
     train,
     setName,
+    applyStatEffects,
     resetGame,
     xpPerLevel,
   } = useRegenmon(userId)
+
+  const {
+    totalPoints,
+    stage,
+    nextStageThreshold,
+    addTrainingResult,
+  } = useTraining()
+
+  const getSyncData = useCallback(
+    () => ({
+      happiness: state.happiness,
+      hunger: state.hunger,
+      totalPoints,
+    }),
+    [state.happiness, state.hunger, totalPoints]
+  )
+  const { syncNow } = useHubSync(getSyncData)
 
   const [editing, setEditing] = useState(false)
   const [nameInput, setNameInput] = useState("")
   const [showReset, setShowReset] = useState(false)
   const [showChat, setShowChat] = useState(false)
-
-  if (!mounted) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-8 h-8 border-2 border-[hsl(var(--neon-cyan))] border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
-  }
-
-  const startEditing = () => {
-    setNameInput(state.name)
-    setEditing(true)
-  }
-
-  const saveName = () => {
-    const trimmed = nameInput.trim()
-    if (trimmed.length > 0) {
-      setName(trimmed)
-    }
-    setEditing(false)
-  }
-
-  const handleReset = () => {
-    if (showReset) {
-      resetGame()
-      setShowReset(false)
-    } else {
-      setShowReset(true)
-      setTimeout(() => setShowReset(false), 3000)
-    }
-  }
-
-  const handleFeed = () => {
-    if (authenticated) {
-      const spent = spendCoins(feedCost)
-      if (!spent) return
-      feed()
-      logAction("Alimentar", -feedCost)
-    } else {
-      feed()
-    }
-  }
-
-  const handlePlay = () => {
-    play()
-    if (authenticated) logAction("Jugar", 0)
-  }
-
-  const handleTrain = () => {
-    train()
-    if (authenticated) logAction("Entrenar", 0)
-  }
+  const [activeTab, setActiveTab] = useState<"game" | "train" | "social">("game")
+  const [evolutionAlert, setEvolutionAlert] = useState<string | null>(null)
 
   const handleEarnFromChat = useCallback(() => {
     if (!authenticated) return
@@ -113,6 +94,86 @@ export function RegenmonCard({
       logAction("Chat - Monedas ganadas", earned)
     }
   }, [authenticated, tryEarnFromChat, logAction])
+
+  const handleFeed = useCallback(() => {
+    if (authenticated) {
+      const spent = spendCoins(feedCost)
+      if (!spent) return
+      feed()
+      logAction("Alimentar", -feedCost)
+    } else {
+      feed()
+    }
+  }, [authenticated, spendCoins, feedCost, feed, logAction])
+
+  const handlePlay = useCallback(() => {
+    play()
+    if (authenticated) logAction("Jugar", 0)
+  }, [play, authenticated, logAction])
+
+  const handleTrain = useCallback(() => {
+    train()
+    if (authenticated) logAction("Entrenar", 0)
+  }, [train, authenticated, logAction])
+
+  const startEditing = useCallback(() => {
+    setNameInput(state.name)
+    setEditing(true)
+  }, [state.name])
+
+  const saveName = useCallback(() => {
+    const trimmed = nameInput.trim()
+    if (trimmed.length > 0) {
+      setName(trimmed)
+    }
+    setEditing(false)
+  }, [nameInput, setName])
+
+  const handleReset = useCallback(() => {
+    if (showReset) {
+      resetGame()
+      setShowReset(false)
+    } else {
+      setShowReset(true)
+      setTimeout(() => setShowReset(false), 3000)
+    }
+  }, [showReset, resetGame])
+
+  const handleTrainingComplete = useCallback(
+    (result: EvaluationResult, category: string) => {
+      // Apply stat effects
+      const effects = getStatEffects(result.score)
+      applyStatEffects(effects)
+
+      // Add to training history & check evolution
+      const { evolved, newStage } = addTrainingResult(result.score, category)
+
+      // Award tokens as coins
+      earnCoins(result.tokens)
+
+      if (evolved) {
+        const stageNames = ["", "Bebe", "Joven", "Adulto"]
+        earnCoins(100) // bonus evolution
+        setEvolutionAlert(
+          `${state.name} evoluciono a etapa ${newStage} (${stageNames[newStage]})! +100 tokens bonus`
+        )
+        setTimeout(() => setEvolutionAlert(null), 5000)
+      }
+
+      // Sync with HUB after training
+      syncNow()
+    },
+    [applyStatEffects, addTrainingResult, earnCoins, state.name, syncNow]
+  )
+
+  // Early return AFTER all hooks have been called
+  if (!mounted) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-8 h-8 border-2 border-[hsl(var(--neon-cyan))] border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <div
@@ -126,7 +187,83 @@ export function RegenmonCard({
       {/* Neon top border */}
       <div className="h-0.5 w-full bg-gradient-to-r from-[hsl(var(--neon-cyan))] via-[hsl(var(--neon-pink))] to-[hsl(var(--neon-yellow))]" />
 
-      <div className="p-6 flex flex-col gap-6">
+      {/* Tab switcher */}
+      <div className="flex border-b border-border">
+        <button
+          onClick={() => setActiveTab("game")}
+          className={cn(
+            "flex-1 flex items-center justify-center gap-2 py-3 text-xs font-mono font-bold transition-all",
+            activeTab === "game"
+              ? "text-[hsl(var(--neon-cyan))] border-b-2 border-[hsl(var(--neon-cyan))]"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Gamepad2 className="w-4 h-4" />
+          Juego
+        </button>
+        <button
+          onClick={() => setActiveTab("train")}
+          className={cn(
+            "flex-1 flex items-center justify-center gap-2 py-3 text-xs font-mono font-bold transition-all relative",
+            activeTab === "train"
+              ? "text-[hsl(25_100%_55%)] border-b-2 border-[hsl(25_100%_55%)]"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <GraduationCap className="w-4 h-4" />
+          Entrenar
+        </button>
+        <button
+          onClick={() => setActiveTab("social")}
+          className={cn(
+            "flex-1 flex items-center justify-center gap-2 py-3 text-xs font-mono font-bold transition-all",
+            activeTab === "social"
+              ? "text-[hsl(var(--neon-green))] border-b-2 border-[hsl(var(--neon-green))]"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Globe className="w-4 h-4" />
+          Social
+        </button>
+      </div>
+
+      {/* Evolution alert */}
+      {evolutionAlert && (
+        <div className="mx-4 mt-4 p-3 rounded-xl bg-[hsl(var(--neon-yellow)/0.1)] border border-[hsl(50_100%_55%/0.4)] text-center">
+          <p className="text-sm font-mono font-bold text-[hsl(var(--neon-yellow))]">
+            {evolutionAlert}
+          </p>
+        </div>
+      )}
+
+      {/* Training tab */}
+      {activeTab === "train" && (
+        <div className="p-6">
+          <TrainingPanel
+            onComplete={handleTrainingComplete}
+            totalPoints={totalPoints}
+            stage={stage}
+            nextStageThreshold={nextStageThreshold}
+            onClose={() => setActiveTab("game")}
+          />
+        </div>
+      )}
+
+      {/* Social tab */}
+      {activeTab === "social" && (
+        <div className="p-6">
+          <RegisterHub
+            regenmonName={state.name}
+            regenmonEmoji={getEvolutionEmoji(state.level)}
+            stats={{ happiness: state.happiness, hunger: state.hunger }}
+            totalPoints={totalPoints}
+            onRegistered={syncNow}
+          />
+        </div>
+      )}
+
+      {/* Game tab */}
+      {activeTab === "game" && <div className="p-6 flex flex-col gap-6">
         {/* Level badge + Reset */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -269,12 +406,27 @@ export function RegenmonCard({
         )}
 
         {/* Footer tip */}
+        {/* Evolution stage display */}
+        <div className="flex items-center justify-center gap-3">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/40 border border-border">
+            <span className="text-sm">
+              {stage === 1 ? "\uD83E\uDD5A" : stage === 2 ? "\uD83D\uDC23" : "\uD83D\uDC09"}
+            </span>
+            <span className="text-[10px] font-mono text-muted-foreground">
+              Etapa {stage}/3
+            </span>
+            <span className="text-[10px] font-mono text-[hsl(var(--neon-yellow))]">
+              {totalPoints} pts
+            </span>
+          </div>
+        </div>
+
         <p className="text-center text-[10px] font-mono text-muted-foreground tracking-wider">
           {authenticated
             ? `Alimentar cuesta ${feedCost} $FRUTA. Habla con tu Regenmon para ganar monedas.`
             : "La felicidad disminuye con el tiempo. Cuida a tu Regenmon."}
         </p>
-      </div>
+      </div>}
 
       {/* Neon bottom border */}
       <div className="h-0.5 w-full bg-gradient-to-r from-[hsl(var(--neon-yellow))] via-[hsl(var(--neon-pink))] to-[hsl(var(--neon-cyan))]" />

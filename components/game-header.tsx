@@ -23,31 +23,22 @@ export function GameHeader({
 }: GameHeaderProps) {
   return (
     <header className="flex flex-col items-center gap-1 py-6 w-full">
-      {/* Auth bar */}
+      {/* Top bar: coins left, auth right */}
       <div className="flex items-center justify-between w-full px-1 mb-3">
-        <div className="flex items-center gap-2 min-w-0">
-          {authenticated && userEmail ? (
-            <div className="flex items-center gap-1.5 min-w-0">
-              <User className="w-3.5 h-3.5 text-[hsl(var(--neon-cyan))] shrink-0" />
-              <span className="text-[10px] font-mono text-muted-foreground truncate max-w-[120px]">
-                {userEmail}
+        <CoinDisplay
+          coins={coins}
+          authenticated={authenticated}
+          coinDelta={coinDelta}
+        />
+
+        {authenticated ? (
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5 text-[hsl(var(--neon-cyan))]" />
+              <span className="text-[10px] font-mono text-muted-foreground truncate max-w-[100px]">
+                {userEmail ?? "Usuario"}
               </span>
             </div>
-          ) : (
-            <span className="text-[10px] font-mono text-muted-foreground">
-              No conectado
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-3">
-          <CoinDisplay
-            coins={coins}
-            authenticated={authenticated}
-            coinDelta={coinDelta}
-          />
-
-          {authenticated ? (
             <button
               onClick={onLogout}
               className={cn(
@@ -57,29 +48,30 @@ export function GameHeader({
               )}
             >
               <LogOut className="w-3 h-3" />
-              Salir
+              <span className="sr-only sm:not-sr-only">Salir</span>
             </button>
-          ) : (
-            <button
-              onClick={onLogin}
-              className={cn(
-                "flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold",
-                "text-[hsl(var(--neon-cyan))] bg-[hsl(var(--neon-cyan)/0.1)]",
-                "border border-[hsl(170_100%_50%/0.3)] hover:border-[hsl(var(--neon-cyan))]",
-                "hover:shadow-[0_0_15px_hsl(170_100%_50%/0.3)] transition-all"
-              )}
-            >
-              <LogIn className="w-3 h-3" />
-              Iniciar Sesion
-            </button>
-          )}
-        </div>
+          </div>
+        ) : (
+          <button
+            onClick={onLogin}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold",
+              "text-[hsl(var(--neon-cyan))] bg-[hsl(170_100%_50%/0.08)]",
+              "border border-[hsl(170_100%_50%/0.3)] hover:border-[hsl(var(--neon-cyan))]",
+              "hover:bg-[hsl(170_100%_50%/0.15)] hover:shadow-[0_0_15px_hsl(170_100%_50%/0.2)]",
+              "transition-all"
+            )}
+          >
+            <LogIn className="w-3.5 h-3.5" />
+            Iniciar Sesion
+          </button>
+        )}
       </div>
 
       {/* Logo */}
       <div className="flex items-center gap-2">
         <span className="text-3xl" role="img" aria-label="huevo">{"🥚"}</span>
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tighter font-mono">
+        <h1 className="text-3xl md:text-4xl font-bold tracking-tighter font-mono text-balance">
           <span className="text-[hsl(var(--neon-cyan))]">REGEN</span>
           <span className="text-[hsl(var(--neon-pink))]">MON</span>
         </h1>
